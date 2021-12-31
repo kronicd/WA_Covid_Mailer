@@ -1,6 +1,6 @@
 # WA Covid Mailer
 
-Sends alerts from [Healthy WA's Covid19 Exposure Locations](https://www.healthywa.wa.gov.au/COVID19locations) to via email and slack.
+Sends alerts from [Healthy WA's Covid19 Exposure Locations](https://www.healthywa.wa.gov.au/COVID19locations) via email and slack.
 
 ## Setup
 
