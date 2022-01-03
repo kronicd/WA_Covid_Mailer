@@ -7,6 +7,8 @@ Sends alerts from [Healthy WA's Covid19 Exposure Locations](https://www.healthyw
 ### Edit the configuration items in wacovidmailer.py
 
 ~~~
+### CONFIGURATION ITEMS ###
+
 # Database location
 db_file = "/path/to/exposures.db" # will be created on first use
 
@@ -43,7 +45,7 @@ pip3 install requests lxml sqlite3 pytz
 ### Setup your cronjob
 
 ~~~
-*/30 * * * * /usr/bin/python3 /path/to/wacovidmailer.py > /dev/null 2>&1
+*/15 * * * * /usr/bin/python3 /path/to/wacovidmailer.py > /dev/null 2>&1
 ~~~
 
 ## License

@@ -15,8 +15,7 @@ import subprocess
 
 
 waGovUrl = "https://www.healthywa.wa.gov.au/COVID19locations"
-date_time = datetime.now(pytz.timezone('Australia/Perth')).strftime("%m/%d/%Y %H:%M:%S")
-
+date_time = datetime.now(pytz.timezone("Australia/Perth")).strftime("%m/%d/%Y %H:%M:%S")
 
 
 ### CONFIGURATION ITEMS ###
@@ -25,7 +24,7 @@ date_time = datetime.now(pytz.timezone('Australia/Perth')).strftime("%m/%d/%Y %H
 debug = True
 
 # Database location
-db_file = "/path/to/exposures.db" # will be created on first use
+db_file = "/path/to/exposures.db"  # will be created on first use
 
 # Email details
 emailAlerts = False
@@ -33,13 +32,18 @@ smtpServ = ""
 smtpPort = ""
 fromAddr = ""
 replyAddr = ""
-destAddr = ["email1@example.com", "email2@example.com"]
 subjLine = f"Alert: Updated WA covid-19 exposure sites ({date_time})"
+destAddr = [
+    "email1@example.com", 
+    "email2@example.com"
+]
 
 # Slack Alerts
 slackAlerts = False
-webhook_urls = ["https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX"] # slack webhook 1
-webhook_urls = webhook_urls + ["https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX"] # slack webhook 2
+webhook_urls = [
+    "https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX",
+    "https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX"
+]
 
 # Dreamhost Announce
 dreamhostAnounces = False
@@ -62,18 +66,20 @@ def create_connection(db_file):
     try:
         conn = sqlite3.connect(db_file, isolation_level=None)
     except Error as e:
-        print(f'something went wrong: {e}')
+        print(f"something went wrong: {e}")
 
     # create tables if needed
-    query = "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='exposures';"
+    query = (
+        "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='exposures';"
+    )
 
     result = conn.execute(query)
 
-    if result.fetchone()[0]==1:
+    if result.fetchone()[0] == 1:
         pass
     else:
         print("creating table...")
-        table_create =  """ CREATE TABLE IF NOT EXISTS exposures (
+        table_create = """ CREATE TABLE IF NOT EXISTS exposures (
                             id integer PRIMARY KEY,
                             datentime text,
                             suburb text,
@@ -97,85 +103,91 @@ Reply-To: {replyAddr}
 Subject: {subjLine}
 
 
-{body}.""".encode('ascii', 'replace')
-        print(message)
+{body}.""".encode("ascii", "replace")
 
         try:
             context = ssl.create_default_context()
 
             with smtplib.SMTP_SSL(smtpServ, smtpPort, context=context) as server:
                 server.sendmail(fromAddr, destEmail, message)
-            print('Email sent')
+            print("Email sent")
         except smtplib.SMTPException as e:
-            print('SMTP error occurred: ' + str(e))
+            print("SMTP error occurred: " + str(e))
 
-def post_message_to_slack(text, blocks = None):
+
+def post_message_to_slack(text, blocks=None):
 
     for webhook_url in webhook_urls:
-        slack_data = {'text': text}
+        slack_data = {"text": text}
 
         response = requests.post(
-            webhook_url, data=json.dumps(slack_data),
-            headers={'Content-Type': 'application/json'}
+            webhook_url,
+            data=json.dumps(slack_data),
+            headers={"Content-Type": "application/json"},
         )
 
         if response.status_code != 200:
             raise ValueError(
-                'Request to slack returned an error %s, the response is:\n%s'
-                % (response.status_code, response.text))
+                "Request to slack returned an error %s, the response is:\n%s"
+                % (response.status_code, response.text)
+            )
 
         print("Slack sent")
 
 
 def sendDhAnnounce(comms):
 
-    url = 'https://api.dreamhost.com/'
+    url = "https://api.dreamhost.com/"
 
-    bodyParams = {'key': 'somevalue',
-                    }
-    data = {'key':apiKey,
-            'cmd':'announcement_list-post_announcement',
-            'listname':listName,
-            'domain':listDomain,
-            'subject':subjLine,
-            'message':comms,
-            'charset':'utf-8',
-            'type':'text',
-            'duplicate_ok':'1'
-            }
+    bodyParams = {
+        "key": "somevalue",
+    }
+    data = {
+        "key": apiKey,
+        "cmd": "announcement_list-post_announcement",
+        "listname": listName,
+        "domain": listDomain,
+        "subject": subjLine,
+        "message": comms,
+        "charset": "utf-8",
+        "type": "text",
+        "duplicate_ok": "1",
+    }
 
-
-    x = requests.post(url, data = data)
+    x = requests.post(url, data=data)
 
     print(x.text)
     return x.status_code
+
 
 def getDetails():
 
     req = requests.get(waGovUrl)
 
     if req.status_code != 200:
-        print(f'Failed to fetch page: {req.reason}')
-        raise Exception('reqest_not_ok')
+        print(f"Failed to fetch page: {req.reason}")
+        raise Exception("reqest_not_ok")
 
     doc = lxml.html.fromstring(req.content)
-    
+
     sites_table = doc.xpath('//table[@id="locationTable"]')[0][1]
-    rows = sites_table.xpath('.//tr')
+    rows = sites_table.xpath(".//tr")
 
     if len(rows) < 1:
-        print(f'found no data')
-        raise Exception('table_parse_fail')
+        print(f"found no data")
+        raise Exception("table_parse_fail")
 
     return rows
+
 
 def cleanString(location):
 
     newLoc = ""
-    location = location.replace("\xa0","")
-    for line in location.split('\n'):
-        newLoc = (newLoc + line.lstrip().rstrip() + ", ")
-    return newLoc.rstrip(', ').replace(', , ',', ').rstrip("\r\n")
+    location = location.replace("\xa0", "")
+    for line in location.split("\n"):
+        newLoc = newLoc + line.lstrip().rstrip() + ", "
+    return newLoc.rstrip(", ").replace(", , ", ", ").rstrip("\r\n")
+
 
 def buildDetails(exposure):
     datentime = cleanString(exposure[1].text_content())
@@ -184,7 +196,7 @@ def buildDetails(exposure):
     updated = cleanString(exposure[4].text_content())
     advice = cleanString(exposure[5].text_content())
 
-    exposure_details =  f"""Date and Time: {datentime}
+    exposure_details = f"""Date and Time: {datentime}
 Suburb: {suburb}
 Location: {location}
 Updated: {updated}
@@ -194,12 +206,11 @@ Advice: {advice}\n\n"""
 
     return exposure_details
 
-
-# backup db incase things go bad
-shutil.copy(db_file, f'{db_file}.bak')
-
 # load sqlite3
 dbconn = create_connection(db_file)
+
+# backup db incase things go bad
+shutil.copy(db_file, f"{db_file}.bak")
 
 # get exposures
 exposures = getDetails()
@@ -224,11 +235,11 @@ for exposure in exposures:
                 AND advice = ?;"""
 
     args = (datentime, suburb, location, updated, advice)
-    result = dbconn.execute(query,args)
+    result = dbconn.execute(query, args)
 
     if result.fetchone()[0] > 0:
         pass
-        #print('exposure exists')
+        # print('exposure exists')
     else:
         alerts.append(exposure)
 
@@ -249,8 +260,8 @@ for exposure in alerts:
                 VALUES (?,?,?,?,?) """
 
     args = (datentime, suburb, location, updated, advice)
-    result = dbconn.execute(query,args)
-    
+    result = dbconn.execute(query, args)
+
     if debug:
         print(comms)
 
@@ -271,11 +282,11 @@ if not debug:
 
 
 dbconn.commit()
-#dbconn.close() # removed as we've swapped to autocommit and this was causing some weird issues
+# we don't close as we're using autocommit, this results in greater 
+# compatability with different versions of sqlite3
 
 if len(comms) > 0 and dreamhostAnounces and mailPostSuccess != 200 and not debug:
     print(result)
-    os.replace(f'{db_file}.bak', db_file)
+    os.replace(f"{db_file}.bak", db_file)
 else:
-    os.remove(f'{db_file}.bak')
-
+    os.remove(f"{db_file}.bak")
