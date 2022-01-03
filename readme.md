@@ -7,7 +7,6 @@ Sends alerts from [Healthy WA's Covid19 Exposure Locations](https://www.healthyw
 ### Edit the configuration items in wacovidmailer.py
 
 ~~~
-
 ### CONFIGURATION ITEMS ###
 
 # Debug mode disables sending of alerts
