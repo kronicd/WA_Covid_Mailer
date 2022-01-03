@@ -7,27 +7,36 @@ Sends alerts from [Healthy WA's Covid19 Exposure Locations](https://www.healthyw
 ### Edit the configuration items in wacovidmailer.py
 
 ~~~
+
 ### CONFIGURATION ITEMS ###
 
+# Debug mode disables sending of alerts
+debug = True
+
 # Database location
-db_file = "/path/to/exposures.db" # will be created on first use
+db_file = "/path/to/exposures.db"  # will be created on first use
 
 # Email details
-emailAlerts = True
+emailAlerts = False
 smtpServ = ""
 smtpPort = ""
 fromAddr = ""
 replyAddr = ""
-destAddr = ["email1@example.com", "email2@example.com"]
 subjLine = f"Alert: Updated WA covid-19 exposure sites ({date_time})"
+destAddr = [
+    "email1@example.com", 
+    "email2@example.com"
+]
 
 # Slack Alerts
-slackAlerts = True
-webhook_urls = ["https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX"] # slack webhook 1
-webhook_urls = webhook_urls + ["https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX"] # slack webhook 2
+slackAlerts = False
+webhook_urls = [
+    "https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX",
+    "https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX"
+]
 
 # Dreamhost Announce
-dreamhostAnounces = True
+dreamhostAnounces = False
 apiKey = ""
 listDomain = ""
 listName = ""
