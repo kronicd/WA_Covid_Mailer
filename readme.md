@@ -1,6 +1,6 @@
 # WA Covid Mailer
 
-Sends alerts from [Healthy WA's Covid19 Exposure Locations](https://www.healthywa.wa.gov.au/COVID19locations) to via email and slack.
+Sends alerts from [Healthy WA's Covid19 Exposure Locations](https://www.healthywa.wa.gov.au/COVID19locations) to via email, slack, and [dreamhost announce](https://help.dreamhost.com/hc/en-us/articles/215683497-How-do-I-configure-and-manage-an-Announcement-List-) lists.
 
 ## Setup
 
@@ -24,13 +24,20 @@ slackAlerts = True
 webhook_urls = ["https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX"] # slack webhook 1
 webhook_urls = webhook_urls + ["https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX"] # slack webhook 2
 
+# Dreamhost Announce
+dreamhostAnounces = True
+apiKey = ""
+listDomain = ""
+listName = ""
+subjLine = f"Alert: Updated WA covid-19 exposure sites ({date_time})"
+
 ### END OF CONFIGURATION ITEMS
 ~~~
 
 ### Install your deps
 
 ~~~
-pip3 install requests lxml sqlite3
+pip3 install requests lxml sqlite3 pytz
 ~~~
 
 ### Setup your cronjob

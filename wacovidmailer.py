@@ -7,23 +7,28 @@ import sqlite3
 import json
 from pprint import pprint
 import smtplib, ssl
+import pytz
 from datetime import datetime
+import os
+import shutil
+import subprocess
 
 
 waGovUrl = "https://www.healthywa.wa.gov.au/COVID19locations"
-date_time = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+date_time = datetime.now(pytz.timezone('Australia/Perth')).strftime("%m/%d/%Y %H:%M:%S")
+
 
 
 ### CONFIGURATION ITEMS ###
 
 # Debug mode disables sending of alerts
-debug = False
+debug = True
 
 # Database location
 db_file = "/path/to/exposures.db" # will be created on first use
 
 # Email details
-emailAlerts = True
+emailAlerts = False
 smtpServ = ""
 smtpPort = ""
 fromAddr = ""
@@ -32,9 +37,17 @@ destAddr = ["email1@example.com", "email2@example.com"]
 subjLine = f"Alert: Updated WA covid-19 exposure sites ({date_time})"
 
 # Slack Alerts
-slackAlerts = True
+slackAlerts = False
 webhook_urls = ["https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX"] # slack webhook 1
 webhook_urls = webhook_urls + ["https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX"] # slack webhook 2
+
+# Dreamhost Announce
+dreamhostAnounces = False
+apiKey = ""
+listDomain = ""
+listName = ""
+subjLine = f"Alert: Updated WA covid-19 exposure sites ({date_time})"
+
 
 ### END OF CONFIGURATION ITEMS
 
@@ -47,7 +60,7 @@ def create_connection(db_file):
 
     conn = None
     try:
-        conn = sqlite3.connect(db_file)
+        conn = sqlite3.connect(db_file, isolation_level=None)
     except Error as e:
         print(f'something went wrong: {e}')
 
@@ -114,6 +127,29 @@ def post_message_to_slack(text, blocks = None):
         print("Slack sent")
 
 
+def sendDhAnnounce(comms):
+
+    url = 'https://api.dreamhost.com/'
+
+    bodyParams = {'key': 'somevalue',
+                    }
+    data = {'key':apiKey,
+            'cmd':'announcement_list-post_announcement',
+            'listname':listName,
+            'domain':listDomain,
+            'subject':subjLine,
+            'message':comms,
+            'charset':'utf-8',
+            'type':'text',
+            'duplicate_ok':'1'
+            }
+
+
+    x = requests.post(url, data = data)
+
+    print(x.text)
+    return x.status_code
+
 def getDetails():
 
     req = requests.get(waGovUrl)
@@ -158,8 +194,12 @@ Advice: {advice}\n\n"""
 
     return exposure_details
 
+
+# backup db incase things go bad
+shutil.copy(db_file, f'{db_file}.bak')
+
 # load sqlite3
-conn = create_connection(db_file)
+dbconn = create_connection(db_file)
 
 # get exposures
 exposures = getDetails()
@@ -184,7 +224,7 @@ for exposure in exposures:
                 AND advice = ?;"""
 
     args = (datentime, suburb, location, updated, advice)
-    result = conn.execute(query,args)
+    result = dbconn.execute(query,args)
 
     if result.fetchone()[0] > 0:
         pass
@@ -209,10 +249,14 @@ for exposure in alerts:
                 VALUES (?,?,?,?,?) """
 
     args = (datentime, suburb, location, updated, advice)
-    result = conn.execute(query,args)
+    result = dbconn.execute(query,args)
     
     if debug:
         print(comms)
+
+
+# kludge ugh
+mailPostSuccess = 200
 
 if not debug:
 
@@ -222,10 +266,16 @@ if not debug:
     if len(comms) > 0 and slackAlerts:
         post_message_to_slack(comms)
 
-
-conn.commit()
-conn.close()
-
+    if len(comms) > 0 and dreamhostAnounces:
+        mailPostSuccess = sendDhAnnounce(comms)
 
 
+dbconn.commit()
+#dbconn.close() # removed as we've swapped to autocommit and this was causing some weird issues
+
+if len(comms) > 0 and dreamhostAnounces and mailPostSuccess != 200 and not debug:
+    print(result)
+    os.replace(f'{db_file}.bak', db_file)
+else:
+    os.remove(f'{db_file}.bak')
 
