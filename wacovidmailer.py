@@ -52,12 +52,25 @@ listDomain = ""
 listName = ""
 subjLine = f"Alert: Updated WA covid-19 exposure sites ({date_time})"
 
+# Error Alert Email
+adminAlerts = False
+adminSmtpServ = ""
+adminSmtpPort = ""
+adminFromAddr = ""
+adminSmtpUser = ""
+adminSmtpPass = ""
+AdminReplyAddr = ""
+AdminSubjLine = f"Alert: WA Covid Mailer Error ({date_time})"
+AdminDestAddr = [
+    "email1@example.com", 
+    "email2@example.com"
+]
 
 ### END OF CONFIGURATION ITEMS
 
 
 if debug:
-    db_file = "exposures.db"
+    db_file = "exposures-debug.db"
 
 
 def create_connection(db_file):
@@ -110,9 +123,34 @@ Subject: {subjLine}
 
             with smtplib.SMTP_SSL(smtpServ, smtpPort, context=context) as server:
                 server.sendmail(fromAddr, destEmail, message)
-            print("Email sent")
+                print(f"Email sent to {destEmail}")
         except smtplib.SMTPException as e:
             print("SMTP error occurred: " + str(e))
+
+
+def sendAdminAlert(errorMsg):
+
+    if(adminAlerts):
+        for destEmail in AdminDestAddr:
+
+            message = f"""To: {AdminDestAddr}
+From: {adminFromAddr}
+Reply-To: {AdminReplyAddr}
+Subject: {AdminSubjLine}
+
+
+{errorMsg}.""".encode("ascii", "replace")
+
+            try:
+                context = ssl.create_default_context()
+
+                with smtplib.SMTP_SSL(adminSmtpServ, adminSmtpPort, context=context) as server:
+                    server.sendmail(adminFromAddr, adminDestEmail, message)
+                    print(f"Email sent to {destEmail}")
+            except smtplib.SMTPException as e:
+                print("SMTP error occurred: " + str(e))
+    else:
+        print("Admin alerts disabled")
 
 
 def post_message_to_slack(text, blocks=None):
@@ -173,6 +211,19 @@ def getDetails():
     sites_table = doc.xpath('//table[@id="locationTable"]')[0][1]
     rows = sites_table.xpath(".//tr")
 
+    # check for proper header
+    header = doc.xpath('//table[@id="locationTable"]')[0][0]
+    headerRows = header.xpath(".//th")
+
+    if (headerRows[0].text_content() == 'Exposure date & time' and 
+    headerRows[1].text_content() == 'Suburb' and
+    headerRows[2].text_content() == 'Location' and
+    headerRows[3].text_content() == 'Date updated' and
+    headerRows[4].text_content() == 'Health advice'):
+        pass
+    else:
+        rows = ""
+
     if len(rows) < 1:
         print(f"found no data")
         raise Exception("table_parse_fail")
@@ -206,6 +257,38 @@ Advice: {advice}\n\n"""
 
     return exposure_details
 
+def filterExistingExposures(exposure):
+
+    # examine each exposure
+    # if it is in the DB already, do nothing
+    # if it is not in the DB: add it to our alerts list
+    alerts = []
+    for exposure in exposures:
+
+        datentime = cleanString(exposure[1].text_content())
+        suburb = cleanString(exposure[2].text_content())
+        location = cleanString(exposure[3].text_content())
+        updated = cleanString(exposure[4].text_content())
+        advice = cleanString(exposure[5].text_content())
+
+        query = """SELECT count(id) FROM exposures WHERE 
+                    datentime = ? 
+                    AND suburb = ?
+                    AND location = ?
+                    AND updated = ?
+                    AND advice = ?;"""
+
+        args = (datentime, suburb, location, updated, advice)
+        result = dbconn.execute(query, args)
+
+        if result.fetchone()[0] > 0:
+            pass
+            # print('exposure exists')
+        else:
+            alerts.append(exposure)
+
+    return alerts
+
 # load sqlite3
 dbconn = create_connection(db_file)
 
@@ -213,35 +296,14 @@ dbconn = create_connection(db_file)
 shutil.copy(db_file, f"{db_file}.bak")
 
 # get exposures
-exposures = getDetails()
+try:
+    exposures = getDetails()
+except:
+    sendAdminAlert("Unable to fetch data, please investigate")
+    exit()
 
-# examine each exposure
-# if it is in the DB already, do nothing
-# if it is not in the DB: add it to our alerts list
-alerts = []
-for exposure in exposures:
-
-    datentime = cleanString(exposure[1].text_content())
-    suburb = cleanString(exposure[2].text_content())
-    location = cleanString(exposure[3].text_content())
-    updated = cleanString(exposure[4].text_content())
-    advice = cleanString(exposure[5].text_content())
-
-    query = """SELECT count(id) FROM exposures WHERE 
-                datentime = ? 
-                AND suburb = ?
-                AND location = ?
-                AND updated = ?
-                AND advice = ?;"""
-
-    args = (datentime, suburb, location, updated, advice)
-    result = dbconn.execute(query, args)
-
-    if result.fetchone()[0] > 0:
-        pass
-        # print('exposure exists')
-    else:
-        alerts.append(exposure)
+# filter list of exposures to remove known/previously seen exposures
+alerts = filterExistingExposures(exposures)
 
 # for each new exposure add it to the DB and add it to a string for comms
 comms = ""
@@ -288,5 +350,6 @@ dbconn.commit()
 if len(comms) > 0 and dreamhostAnounces and mailPostSuccess != 200 and not debug:
     print(result)
     os.replace(f"{db_file}.bak", db_file)
+    sendAdminAlert("Unable to send mail, please investigate")
 else:
     os.remove(f"{db_file}.bak")
