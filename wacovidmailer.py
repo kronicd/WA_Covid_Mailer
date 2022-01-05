@@ -15,7 +15,7 @@ import subprocess
 
 
 waGovUrl = "https://www.healthywa.wa.gov.au/COVID19locations"
-date_time = datetime.now(pytz.timezone("Australia/Perth")).strftime("%m/%d/%Y %H:%M:%S")
+date_time = datetime.now(pytz.timezone("Australia/Perth")).strftime("%d/%m/%Y %H:%M:%S")
 
 
 ### CONFIGURATION ITEMS ###
