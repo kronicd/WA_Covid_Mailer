@@ -6,7 +6,7 @@ Sends alerts from [Healthy WA's Covid19 Exposure Locations](https://www.healthyw
 
 ### Edit the configuration items in wacovidmailer.py
 
-~~~
+~~~python
 ### CONFIGURATION ITEMS ###
 
 # Debug mode disables sending of alerts
@@ -63,7 +63,7 @@ An instance of the code is running and is available at https://exposures.kronicd
 * Custom PHP is used to add and remove email addresses from a dreamhost announcement mailing list
 * `wacovidmailer.py` is configured to run every 15 minutes and has the `Dreamhost Announce` configuration items filled out
 * Dreamhost manages the mailing list functionality including confirmation emails for subscribe actions
-* The PHP code is not included as it would be of limited use and add significant confusion for those attempting deployment
+* The PHP code is not included as part of this release as it would be of limited use and add significant confusion for those attempting deployment
 
 The core of the subscription function is essentially:
 
