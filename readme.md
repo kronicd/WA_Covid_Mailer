@@ -56,6 +56,29 @@ pip3 install requests lxml sqlite3 pytz
 */15 * * * * /usr/bin/python3 /path/to/wacovidmailer.py > /dev/null 2>&1
 ~~~
 
+## Notes on exposures.kronicd.net
+
+An instance of the code is running and is available at https://exposures.kronicd.net, which is configured as follows:
+
+* Custom PHP is used to add and remove email addresses from a dreamhost announcement mailing list
+* `wacovidmailer.py` is configured to run every 15 minutes and has the `Dreamhost Announce` configuration items filled out
+* Dreamhost manages the mailing list functionality including confirmation emails for subscribe actions
+* The PHP code is not included as it would be of limited use and add significant confusion for those attempting deployment
+
+The core of the subscription function is essentially:
+
+~~~php
+if($invalid == False) {
+    $format = 'https://api.dreamhost.com/?key=%s&cmd=announcement_list-add_subscriber&listname=LISTNAME&domain=DOMAIN&email=%s';
+    $subUrl = sprintf($format, $apiKey, $email);
+    file_get_contents($subUrl);
+    $msg = "You have been subscribed to the mailing list. Please check your email for a confirmation link, you may need to check your spam folder.";
+} else {
+    $msg = "Email address invalid or not supplied.";
+
+}
+~~~
+
 ## License
 
 This work is licensed under a
