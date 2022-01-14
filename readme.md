@@ -1,6 +1,6 @@
 # WA Covid Mailer
 
-Sends alerts from [Healthy WA's Covid19 Exposure Locations](https://www.healthywa.wa.gov.au/COVID19locations) to via email, slack, and [dreamhost announce](https://help.dreamhost.com/hc/en-us/articles/215683497-How-do-I-configure-and-manage-an-Announcement-List-) lists.
+Sends alerts from [Healthy WA's Covid19 Exposure Locations](https://www.healthywa.wa.gov.au/COVID19locations) to via email, slack, discord, and [dreamhost announce](https://help.dreamhost.com/hc/en-us/articles/215683497-How-do-I-configure-and-manage-an-Announcement-List-) lists.
 
 ## Setup
 
@@ -32,6 +32,13 @@ slackAlerts = False
 webhook_urls = [
     "https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX",
     "https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX"
+]
+
+# Discord Alerts
+discordAlerts = False
+discord_webhook_urls = [
+    "https://discordapp.com/api/webhooks/XXXXXXX/XXXXXXX",
+    "https://discordapp.com/api/webhooks/XXXXXXX/XXXXXXX"
 ]
 
 # Dreamhost Announce
