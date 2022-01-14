@@ -12,6 +12,7 @@ from datetime import datetime
 import os
 import shutil
 import subprocess
+import time
 
 
 waGovUrl = "https://www.healthywa.wa.gov.au/COVID19locations"
@@ -43,6 +44,13 @@ slackAlerts = False
 webhook_urls = [
     "https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX",
     "https://hooks.slack.com/services/XXXXXXX/XXXXXXX/XXXXXXX"
+]
+
+# Discord Alerts
+discordAlerts = False
+discord_webhook_urls = [
+    "https://discordapp.com/api/webhooks/XXXXXXX/XXXXXXX",
+    "https://discordapp.com/api/webhooks/XXXXXXX/XXXXXXX"
 ]
 
 # Dreamhost Announce
@@ -171,6 +179,38 @@ def post_message_to_slack(text, blocks=None):
             )
 
         print("Slack sent")
+
+
+def post_message_to_discord(text, blocks=None):
+
+    for discord_webhook_url in discord_webhook_urls:
+
+        # Discord doesn't let us post more than 2000 characters at a time
+        # so we need to split and make individual posts every 2 seconds to avoid rate limits.
+        # This may spam notifications depending on your server settings
+        discord_text = text.split('\n\n')
+        alert_total = (len(discord_text))
+        alert_number = 0
+
+        for alert in discord_text:
+            alert_number += 1
+
+            discord_data = {"content": alert}
+
+            response = requests.post(
+                discord_webhook_url,
+                data=json.dumps(discord_data),
+                headers={"Content-Type": "application/json"},
+            )
+
+            if response.status_code != 200|204: #Discord returns 204 no data on success
+                raise ValueError(
+                    "Request to discord returned an error %s, the response is:\n%s"
+                    % (response.status_code, response.text)
+                )
+
+            print("Discord sent %s of %s" % (alert_number, alert_total))
+            time.sleep(2)        
 
 
 def sendDhAnnounce(comms):
@@ -338,6 +378,9 @@ if not debug:
 
     if len(comms) > 0 and slackAlerts:
         post_message_to_slack(comms)
+
+    if len(comms) > 0 and discordAlerts:
+        post_message_to_discord(comms)
 
     if len(comms) > 0 and dreamhostAnounces:
         mailPostSuccess = sendDhAnnounce(comms)
