@@ -181,7 +181,7 @@ def post_message_to_slack(text, blocks=None):
         print("Slack sent")
 
 
-def chunkyboi(text, delimeter="\n\n", max_length=2000):
+def chunky_alerts(text, delimeter="\n\n", max_length=2000):
     i = 0
     while i < len(text):
         # Note: if the last chunk is less than max_length, it will be included
@@ -201,8 +201,8 @@ def post_message_to_discord(text, blocks=None):
         # Discord doesn't let us post more than 2000 characters at a time
         # so we need to split and make individual posts every 2 seconds to avoid rate limits.
         # This may spam notifications depending on your server settings
-        alert_total = len(chunkyboi(text))
-        for alert_number, alert in enumerate(chunkyboi(text)):
+        alert_total = len(chunky_alerts(text))
+        for alert_number, alert in enumerate(chunky_alerts(text)):
             discord_data = {"content": alert}
 
             response = requests.post(
