@@ -181,6 +181,19 @@ def post_message_to_slack(text, blocks=None):
         print("Slack sent")
 
 
+def chunky_alerts(text, delimeter="\n\n", max_length=2000):
+    i = 0
+    while i < len(text):
+        # Note: if the last chunk is less than max_length, it will be included
+        if i + max_length > len(text):
+            yield text[i:]
+            break
+
+        nearest_delim = text[i:i+max_length][::-1].index(delimeter) # Calculate the nearest delimiter index, by reversing the string and finding the first occurence of the delimeter
+        yield text[i:i+max_length-nearest_delim -len(delimeter)] # we don't need the additional delim chars here
+        i += max_length - nearest_delim # we need them here, so we don't end up including a bunch of line breaks
+
+
 def post_message_to_discord(text, blocks=None):
 
     for discord_webhook_url in discord_webhook_urls:
@@ -188,13 +201,8 @@ def post_message_to_discord(text, blocks=None):
         # Discord doesn't let us post more than 2000 characters at a time
         # so we need to split and make individual posts every 2 seconds to avoid rate limits.
         # This may spam notifications depending on your server settings
-        discord_text = text.split('\n\n')
-        alert_total = (len(discord_text))
-        alert_number = 0
-
-        for alert in discord_text:
-            alert_number += 1
-
+        alert_total = len(chunky_alerts(text))
+        for alert_number, alert in enumerate(chunky_alerts(text)):
             discord_data = {"content": alert}
 
             response = requests.post(
