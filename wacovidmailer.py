@@ -7,6 +7,7 @@ from pprint import pprint
 import codecs
 import csv
 import json
+import re
 import lxml.html
 import os
 import pytz
@@ -94,25 +95,103 @@ def create_connection(db_file):
 
     # create tables if needed
     query = (
-        "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='exposures';"
+        "SELECT name FROM sqlite_master WHERE type = 'table';"
     )
 
     result = conn.execute(query)
 
-    if result.fetchone()[0] == 1:
-        pass
-    else:
-        print("creating table...")
-        table_create = """ CREATE TABLE IF NOT EXISTS exposures (
-                            id integer PRIMARY KEY,
-                            datentime text,
-                            suburb text,
-                            location text,
-                            updated text,
-                            advice text,
-                            first_seen text,
-                            last_seen text
-                        ); """
+    tables = result.fetchall()
+
+    required_tables = [
+        'wahealth_exposures',
+        'sheet_exposures',
+        'ecu_exposures',
+        'uwa_exposures',
+        'murdoch_exposures',
+        'curtin_exposures'
+    ]
+    
+    for table in tables:
+        while table[0] in required_tables:
+            required_tables.remove(table[0])
+
+    for exposures_table in required_tables:
+        table_create = ""
+
+        if exposures_table == 'wahealth_exposures':
+            table_create = """
+                CREATE TABLE IF NOT EXISTS wahealth_exposures (
+                    id integer PRIMARY KEY,
+                    datentime text,
+                    suburb text,
+                    location text,
+                    updated text,
+                    advice text,
+                    first_seen text,
+                    last_seen text
+                );
+            """
+        elif exposures_table == 'sheet_exposures':
+            table_create = """
+                CREATE TABLE IF NOT EXISTS sheet_exposures (
+                    id integer PRIMARY KEY,
+                    datentime text,
+                    location text,
+                    suburb text,
+                    first_seen text,
+                    last_seen text
+                );
+            """
+        elif exposures_table == 'ecu_exposures':
+            table_create = """
+                CREATE TABLE IF NOT EXISTS ecu_exposures (
+                    id integer PRIMARY KEY,
+                    campus text,
+                    building text,
+                    date text,
+                    room text,
+                    time text,
+                    first_seen text,
+                    last_seen text
+                );
+            """
+        elif exposures_table == 'uwa_exposures':
+            table_create = """
+                CREATE TABLE IF NOT EXISTS uwa_exposures (
+                    id integer PRIMARY KEY,
+                    date text,
+                    location text,
+                    time text,
+                    first_seen text,
+                    last_seen text
+                );
+            """
+        elif exposures_table == 'murdoch_exposures':
+            table_create = """
+                CREATE TABLE IF NOT EXISTS murdoch_exposures (
+                    id integer PRIMARY KEY,
+                    campus text,
+                    date text,
+                    location text,
+                    time text,
+                    first_seen text,
+                    last_seen text
+                );
+            """
+        elif exposures_table == 'curtin_exposures':
+            table_create = """
+                CREATE TABLE IF NOT EXISTS curtin_exposures (
+                    id integer PRIMARY KEY,
+                    campus text,
+                    contact_type text,
+                    date text,
+                    location text,
+                    time text,
+                    first_seen text,
+                    last_seen text
+                );
+            """
+        
         conn.execute(table_create)
         conn.commit()
 
@@ -319,7 +398,7 @@ def wahealth_filterExposures(exposures):
         record['advice'] = wahealth_cleanString(exposure[5].text_content())
         record['last_seen'] = date_time
 
-        query = """SELECT count(id), coalesce(id, 0) FROM exposures WHERE 
+        query = """SELECT count(id), coalesce(id, 0) FROM wahealth_exposures WHERE 
                     datentime = ? 
                     AND suburb = ?
                     AND location = ?
@@ -340,6 +419,7 @@ def wahealth_filterExposures(exposures):
 
     return alerts
 
+
 def sheet_GetLocations():
 
     # Consumer: https://docs.google.com/spreadsheets/d/1-U8Ea9o9bnST5pzckC8lzwNNK_jO6kIVUAi5Uu_-Ltc/edit?fbclid=IwAR3EaVvU0di14R6zqqfFP7sDLCwPOYax_SjMcDlmV2D2leqKGRAROCInpj4#gid=1427159313
@@ -358,23 +438,47 @@ def sheet_GetLocations():
     sheetExposures = []
 
     for record in reader:
+        exposure = {}
+
         if record[4] == "Business":
-            datentime = sheet_cleanString(record[2])
-            suburb = sheet_cleanString(record[1])
-            location = sheet_cleanString(record[0]) + " " + sheet_cleanString(record[3])
+            exposure['datentime'] = sheet_cleanString(record[2])
+            exposure['suburb'] = sheet_cleanString(record[1])
+            exposure['location'] = sheet_cleanString(record[0]) + " " + sheet_cleanString(record[3])
+            exposure['last_seen'] = date_time
 
-            sheetExposure = {'datetime': datentime, 'suburb': suburb,'location': location}
+            query = """SELECT count(id), coalesce(id, 0) FROM sheet_exposures WHERE
+                        datentime = ?
+                        AND suburb = ?
+                        AND location = ?;"""
+            
+            args = (exposure['datentime'], exposure['suburb'], exposure['location'])
+            result = dbconn.execute(query, args)
 
-            sheetExposures.append(sheetExposure)
+            id = result.fetchone()
+            if id[0] > 0:
+                exposure['id'] = id[1]
+            else:
+                exposure['id'] = None
+                exposure['first_seen'] = date_time
 
-    if(len(sheetExposure) < 1):
+            sheetExposures.append(exposure)
+
+    if(len(sheetExposures) < 1):
         raise Exception("Sheets Failed - Zero records retrieved")
 
     return sheetExposures
 
+
 def sheet_cleanString(s):
     s = str(lxml.html.fromstring(s).text_content()).strip().replace('\r','').replace('\n','').rstrip(',')
     return s
+
+def sheet_buildDetails(exposure):
+    exposure_details = f"""Date and Time: {exposure['datentime']}
+Suburb: {exposure['suburb']}
+Location: {exposure['location']}\n\n"""
+    
+    return exposure_details
 
 
 def ecu_GetLocations():
@@ -583,19 +687,40 @@ wahealth_alerts = wahealth_filterExposures(wahealth_exposures)
 # for each new exposure add it to the DB and add it to a string for comms
 comms = ""
 
-for exposure in alerts:
+for exposure in wahealth_alerts:
 
     if exposure['id'] is None:
         comms = comms + wahealth_buildDetails(exposure)
 
-        query = f"""INSERT INTO exposures (datentime, suburb, location, updated, advice, first_seen, last_seen) 
+        query = f"""INSERT INTO wahealth_exposures (datentime, suburb, location, updated, advice, first_seen, last_seen) 
                     VALUES (?,?,?,?,?,?,?) """
 
         args = (exposure['datentime'], exposure['suburb'], exposure['location'], exposure['updated'], exposure['advice'], exposure['first_seen'], exposure['last_seen'])
         result = dbconn.execute(query, args)
     
     else:
-        query = f"""UPDATE exposures SET last_seen = ? 
+        query = f"""UPDATE wahealth_exposures SET last_seen = ? 
+                    WHERE id = ? """
+
+        args = (exposure['last_seen'], exposure['id'])
+        result = dbconn.execute(query, args)
+
+    if debug and len(comms) > 0:
+        print(comms)
+
+for exposure in sheet_exposures:
+
+    if exposure['id'] is None:
+        comms = comms + sheet_buildDetails(exposure)
+
+        query = f"""INSERT INTO sheet_exposures (datentime, suburb, location, first_seen, last_seen) 
+                    VALUES (?,?,?,?,?) """
+
+        args = (exposure['datentime'], exposure['suburb'], exposure['location'], exposure['first_seen'], exposure['last_seen'])
+        result = dbconn.execute(query, args)
+    
+    else:
+        query = f"""UPDATE sheet_exposures SET last_seen = ? 
                     WHERE id = ? """
 
         args = (exposure['last_seen'], exposure['id'])
@@ -605,30 +730,30 @@ for exposure in alerts:
         print(comms)
 
 
-# kludge ugh
-mailPostSuccess = 200
+# # kludge ugh
+# mailPostSuccess = 200
 
-if not debug:
-    if len(comms) > 0 and dreamhostAnounces:
-        mailPostSuccess = sendDhAnnounce(comms)
+# if not debug:
+#     if len(comms) > 0 and dreamhostAnounces:
+#         mailPostSuccess = sendDhAnnounce(comms)
 
-    if len(comms) > 0 and emailAlerts:
-        sendEmails(comms)
+#     if len(comms) > 0 and emailAlerts:
+#         sendEmails(comms)
 
-    if len(comms) > 0 and slackAlerts:
-        post_message_to_slack(comms)
+#     if len(comms) > 0 and slackAlerts:
+#         post_message_to_slack(comms)
 
-    if len(comms) > 0 and discordAlerts:
-        post_message_to_discord(comms)
+#     if len(comms) > 0 and discordAlerts:
+#         post_message_to_discord(comms)
 
 
-dbconn.commit()
-# we don't close as we're using autocommit, this results in greater 
-# compatability with different versions of sqlite3
+# dbconn.commit()
+# # we don't close as we're using autocommit, this results in greater 
+# # compatability with different versions of sqlite3
 
-if len(comms) > 0 and dreamhostAnounces and mailPostSuccess != 200 and not debug:
-    print(result)
-    os.replace(f"{db_file}.bak", db_file)
-    sendAdminAlert("Unable to send mail, please investigate")
-else:
-    os.remove(f"{db_file}.bak")
+# if len(comms) > 0 and dreamhostAnounces and mailPostSuccess != 200 and not debug:
+#     print(result)
+#     os.replace(f"{db_file}.bak", db_file)
+#     sendAdminAlert("Unable to send mail, please investigate")
+# else:
+#     os.remove(f"{db_file}.bak")
