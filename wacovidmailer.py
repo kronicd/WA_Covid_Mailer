@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 
 
-import requests
-import lxml.html
-import sqlite3
-import json
-from pprint import pprint
-import smtplib, ssl
-import pytz
 from datetime import datetime
+from html.parser import HTMLParser
+from pprint import pprint
+import codecs
+import csv
+import json
+import lxml.html
 import os
+import pytz
+import requests
 import shutil
+import smtplib, ssl
+import sqlite3
 import subprocess
 import time
 
@@ -248,7 +251,7 @@ def sendDhAnnounce(comms):
     return x.status_code
 
 
-def getDetails():
+def wahealth_GetLocations():
 
     req = requests.get(waGovUrl)
 
@@ -272,7 +275,7 @@ def getDetails():
     headerRows[4].text_content() == 'Health advice'):
         pass
     else:
-        rows = ""
+        raise Exception("WAHealth Failed - Parsing page failure")
 
     if len(rows) < 1:
         print(f"found no data")
@@ -281,7 +284,7 @@ def getDetails():
     return rows
 
 
-def cleanString(location):
+def wahealth_cleanString(location):
 
     newLoc = ""
     location = location.replace("\xa0", "")
@@ -290,7 +293,7 @@ def cleanString(location):
     return newLoc.rstrip(", ").lstrip(", ").replace(", , ", "; ").replace(" , ", " ").rstrip("\r\n")
 
 
-def buildDetails(exposure):
+def wahealth_buildDetails(exposure):
     exposure_details = f"""Date and Time: {exposure['datentime']}
 Suburb: {exposure['suburb']}
 Location: {exposure['location']}
@@ -299,7 +302,7 @@ Advice: {exposure['advice']}\n\n"""
     
     return exposure_details
 
-def filterExposures(exposure):
+def wahealth_filterExposures(exposures):
 
     # examine each exposure
     # if it is in the DB already, get the id and update last seen
@@ -309,11 +312,11 @@ def filterExposures(exposure):
         
         record = {}
 
-        record['datentime'] = cleanString(exposure[1].text_content())
-        record['suburb'] = cleanString(exposure[2].text_content())
-        record['location'] = cleanString(exposure[3].text_content())
-        record['updated'] = cleanString(exposure[4].text_content())
-        record['advice'] = cleanString(exposure[5].text_content())
+        record['datentime'] = wahealth_cleanString(exposure[1].text_content())
+        record['suburb'] = wahealth_cleanString(exposure[2].text_content())
+        record['location'] = wahealth_cleanString(exposure[3].text_content())
+        record['updated'] = wahealth_cleanString(exposure[4].text_content())
+        record['advice'] = wahealth_cleanString(exposure[5].text_content())
         record['last_seen'] = date_time
 
         query = """SELECT count(id), coalesce(id, 0) FROM exposures WHERE 
@@ -337,21 +340,245 @@ def filterExposures(exposure):
 
     return alerts
 
+def sheet_GetLocations():
+
+    # Consumer: https://docs.google.com/spreadsheets/d/1-U8Ea9o9bnST5pzckC8lzwNNK_jO6kIVUAi5Uu_-Ltc/edit?fbclid=IwAR3EaVvU0di14R6zqqfFP7sDLCwPOYax_SjMcDlmV2D2leqKGRAROCInpj4#gid=1427159313
+    # Detailed/Admin: https://docs.google.com/spreadsheets/d/12fN17qFR8ruSk2yf29CR1S6xZMs_nve2ww_6FJk7__8/edit#gid=0
+
+    sheet_id = "1-U8Ea9o9bnST5pzckC8lzwNNK_jO6kIVUAi5Uu_-Ltc"
+    sheet_name = "All%20Locations"
+    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+
+    res = requests.get(url)
+    contents = codecs.decode(res.content, 'UTF-8')
+    contents = contents.replace('"",','')
+    split = contents.splitlines()
+    reader = csv.reader(split)
+
+    sheetExposures = []
+
+    for record in reader:
+        if record[4] == "Business":
+            datentime = sheet_cleanString(record[2])
+            suburb = sheet_cleanString(record[1])
+            location = sheet_cleanString(record[0]) + " " + sheet_cleanString(record[3])
+
+            sheetExposure = {'datetime': datentime, 'suburb': suburb,'location': location}
+
+            sheetExposures.append(sheetExposure)
+
+    if(len(sheetExposure) < 1):
+        raise Exception("Sheets Failed - Zero records retrieved")
+
+    return sheetExposures
+
+def sheet_cleanString(s):
+    s = str(lxml.html.fromstring(s).text_content()).strip().replace('\r','').replace('\n','').rstrip(',')
+    return s
+
+
+def ecu_GetLocations():
+    ecu_url = 'https://www.ecu.edu.au/covid-19/advice-for-staff'
+
+
+    req = requests.get(ecu_url)
+
+    if req.status_code != 200:
+        print(f"Failed to fetch page: {req.reason}")
+        raise Exception("reqest_not_ok")
+
+    doc = lxml.html.fromstring(req.content)
+
+    container = doc.xpath('//div[@id="accordion-01e803ff84807e270adaddf7ade2fa91035b560d"]')[0]
+    tables = container.xpath(".//table")
+
+    outRows = []
+
+
+    for table in tables:
+        rows = table.xpath('./tr')
+
+        for row in rows:
+            date = row[0].text_content().strip()
+            time = row[1].text_content().strip()
+            building = row[2].text_content().strip()
+            room = row[3].text_content().strip()
+
+            outRow = {'date': date, 'time': time, 'building': building, 'room': room}
+            outRows.append(outRow)
+
+    for table in tables:
+        header = table.xpath('.//thead')[0][0]
+
+        if (header[0].text_content().strip() == 'Date' and
+            header[1].text_content().strip() == 'Time' and
+            header[2].text_content().strip() == 'Building' and
+            header[3].text_content().strip() == 'Room'):
+            pass
+        else:
+            raise Exception("ECU Failed - Parsing page failure")
+
+    return outRows
+
+
+
+
+def uwa_GetLocations():
+    uwa_url = 'https://www.uwa.edu.au/covid-19-faq/Home'
+
+
+    req = requests.get(uwa_url)
+
+    if req.status_code != 200:
+        print(f"Failed to fetch page: {req.reason}")
+        raise Exception("reqest_not_ok")
+
+    doc = lxml.html.fromstring(req.content)
+
+    rows = doc.xpath('//div/table/tbody/tr')
+
+    header = rows.pop(0)
+
+    outRows = []
+
+    for row in rows:
+        date = row[0].text_content().strip()
+        location = row[1].text_content().strip()
+        time = row[2].text_content().strip()
+
+        outRow = {'date': date, 'location': location, 'time': time}
+
+        outRows.append(outRow)
+
+
+    if (header[0].text_content().strip() == 'Date' and
+        header[1].text_content().strip() == 'Location' and
+        header[2].text_content().strip() == 'Time'):
+        pass
+    else:
+        raise Exception("UWA Failed - Parsing page failure")
+
+    return outRows
+
+
+
+
+def murdoch_GetLocations():
+    murdoch_url = 'https://www.murdoch.edu.au/notices/covid-19-advice'
+
+
+    req = requests.get(murdoch_url)
+
+    if req.status_code != 200:
+        print(f"Failed to fetch page: {req.reason}")
+        raise Exception("reqest_not_ok")
+
+    doc = lxml.html.fromstring(req.content)
+
+    rows = doc.xpath('//tr')
+
+    header = rows.pop(0)
+
+    outRows = []
+
+    for row in rows:
+        date = row[0].text_content().strip()
+        time = row[1].text_content().strip()
+        campus = row[2].text_content().strip()
+        location = row[3].text_content().strip()
+
+
+        outRow = {'date': date, 'time': time, 'campus': campus, 'location': location}
+        outRows.append(outRow)
+
+
+    if (header[0].text_content().strip() == 'Date' and
+        header[1].text_content().strip() == 'Time' and
+        header[2].text_content().strip() == 'Campus' and 
+        header[3].text_content().strip() == 'Location'):
+
+        pass
+    else:
+        raise Exception("Murdoch Failed - Parsing page failure")
+
+    return outRows
+
+
+
+def curtin_GetLocations():
+    curtin_url = 'https://www.curtin.edu.au/novel-coronavirus/recent-exposure-sites-on-campus/'
+
+
+    req = requests.get(curtin_url)
+
+    if req.status_code != 200:
+        print(f"Failed to fetch page: {req.reason}")
+        raise Exception("reqest_not_ok")
+
+    doc = lxml.html.fromstring(req.content)
+
+    table = doc.xpath('//table[@id="table_1"]')[0]
+    rows = table.xpath('.//tr')
+
+    header = rows.pop(0)
+
+    outRows = []
+
+    for row in rows:
+        date = row[0].text_content().strip()
+        time = row[1].text_content().strip()
+        campus = row[2].text_content().strip()
+        location = row[3].text_content().strip()
+        contact_type = row[4].text_content().strip()
+
+
+        outRow = {'date': date, 'time': time, 'campus': campus, 'location': location, "contact_type": contact_type}
+        outRows.append(outRow)
+
+
+    if (header[0].text_content().strip() == 'Date' and
+        header[1].text_content().strip() == 'Time' and
+        header[2].text_content().strip() == 'Campus' and 
+        header[3].text_content().strip() == 'Location' and 
+        header[4].text_content().strip() == 'Contact type'):
+
+        pass
+    else:
+        raise Exception("Curtin Failed - Parsing page failure")
+
+    return outRows
+
 # load sqlite3
 dbconn = create_connection(db_file)
 
 # backup db incase things go bad
 shutil.copy(db_file, f"{db_file}.bak")
 
+
+
 # get exposures
 try:
-    exposures = getDetails()
-except:
+    wahealth_exposures = wahealth_GetLocations()
+    sheet_exposures = sheet_GetLocations()
+    ecu_exposures = ecu_GetLocations()
+    uwa_exposures = uwa_GetLocations()
+    curtin_exposures = curtin_GetLocations()
+    murdoch_exposures = murdoch_GetLocations()
+except Exception as e:
+    print(e)
     sendAdminAlert("Unable to fetch data, please investigate")
     exit()
 
 # clean exposures list and check if they've already been seen
-alerts = filterExposures(exposures)
+wahealth_alerts = wahealth_filterExposures(wahealth_exposures)
+
+
+
+
+
+
+
+
 
 # for each new exposure add it to the DB and add it to a string for comms
 comms = ""
@@ -359,7 +586,7 @@ comms = ""
 for exposure in alerts:
 
     if exposure['id'] is None:
-        comms = comms + buildDetails(exposure)
+        comms = comms + wahealth_buildDetails(exposure)
 
         query = f"""INSERT INTO exposures (datentime, suburb, location, updated, advice, first_seen, last_seen) 
                     VALUES (?,?,?,?,?,?,?) """
