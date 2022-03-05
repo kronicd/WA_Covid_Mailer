@@ -106,7 +106,9 @@ def create_connection(db_file):
                             suburb text,
                             location text,
                             updated text,
-                            advice text
+                            advice text,
+                            first_seen text,
+                            last_seen text
                         ); """
         conn.execute(table_create)
         conn.commit()
@@ -285,55 +287,53 @@ def cleanString(location):
     location = location.replace("\xa0", "")
     for line in location.split("\n"):
         newLoc = newLoc + line.lstrip().rstrip() + ", "
-    return newLoc.rstrip(", ").replace(", , ", ", ").rstrip("\r\n")
+    return newLoc.rstrip(", ").lstrip(", ").replace(", , ", "; ").replace(" , ", " ").rstrip("\r\n")
 
 
 def buildDetails(exposure):
-    datentime = cleanString(exposure[1].text_content())
-    suburb = cleanString(exposure[2].text_content())
-    location = cleanString(exposure[3].text_content())
-    updated = cleanString(exposure[4].text_content())
-    advice = cleanString(exposure[5].text_content())
-
-    exposure_details = f"""Date and Time: {datentime}
-Suburb: {suburb}
-Location: {location}
-Updated: {updated}
-Advice: {advice}\n\n"""
-
-    exposure_details = exposure_details.rstrip("\r\n") + "\n\n"
-
+    exposure_details = f"""Date and Time: {exposure['datentime']}
+Suburb: {exposure['suburb']}
+Location: {exposure['location']}
+Updated: {exposure['updated']}
+Advice: {exposure['advice']}\n\n"""
+    
     return exposure_details
 
-def filterExistingExposures(exposure):
+def filterExposures(exposure):
 
     # examine each exposure
-    # if it is in the DB already, do nothing
-    # if it is not in the DB: add it to our alerts list
+    # if it is in the DB already, get the id and update last seen
+    # if it is not in the DB: create the first seen date and make id 'None'
     alerts = []
     for exposure in exposures:
+        
+        record = {}
 
-        datentime = cleanString(exposure[1].text_content())
-        suburb = cleanString(exposure[2].text_content())
-        location = cleanString(exposure[3].text_content())
-        updated = cleanString(exposure[4].text_content())
-        advice = cleanString(exposure[5].text_content())
+        record['datentime'] = cleanString(exposure[1].text_content())
+        record['suburb'] = cleanString(exposure[2].text_content())
+        record['location'] = cleanString(exposure[3].text_content())
+        record['updated'] = cleanString(exposure[4].text_content())
+        record['advice'] = cleanString(exposure[5].text_content())
+        record['last_seen'] = date_time
 
-        query = """SELECT count(id) FROM exposures WHERE 
+        query = """SELECT count(id), coalesce(id, 0) FROM exposures WHERE 
                     datentime = ? 
                     AND suburb = ?
                     AND location = ?
                     AND updated = ?
                     AND advice = ?;"""
 
-        args = (datentime, suburb, location, updated, advice)
+        args = (record['datentime'], record['suburb'], record['location'], record['updated'], record['advice'])
         result = dbconn.execute(query, args)
-
-        if result.fetchone()[0] > 0:
-            pass
-            # print('exposure exists')
+        
+        id = result.fetchone()
+        if id[0] > 0:
+            record['id'] = id[1]
         else:
-            alerts.append(exposure)
+            record['id'] = None
+            record['first_seen'] = date_time
+        
+        alerts.append(record)
 
     return alerts
 
@@ -350,29 +350,31 @@ except:
     sendAdminAlert("Unable to fetch data, please investigate")
     exit()
 
-# filter list of exposures to remove known/previously seen exposures
-alerts = filterExistingExposures(exposures)
+# clean exposures list and check if they've already been seen
+alerts = filterExposures(exposures)
 
 # for each new exposure add it to the DB and add it to a string for comms
 comms = ""
 
 for exposure in alerts:
 
-    comms = comms + buildDetails(exposure)
+    if exposure['id'] is None:
+        comms = comms + buildDetails(exposure)
 
-    datentime = cleanString(exposure[1].text_content())
-    suburb = cleanString(exposure[2].text_content())
-    location = cleanString(exposure[3].text_content())
-    updated = cleanString(exposure[4].text_content())
-    advice = cleanString(exposure[5].text_content())
+        query = f"""INSERT INTO exposures (datentime, suburb, location, updated, advice, first_seen, last_seen) 
+                    VALUES (?,?,?,?,?,?,?) """
 
-    query = f"""INSERT INTO exposures (datentime, suburb, location, updated, advice) 
-                VALUES (?,?,?,?,?) """
+        args = (exposure['datentime'], exposure['suburb'], exposure['location'], exposure['updated'], exposure['advice'], exposure['first_seen'], exposure['last_seen'])
+        result = dbconn.execute(query, args)
+    
+    else:
+        query = f"""UPDATE exposures SET last_seen = ? 
+                    WHERE id = ? """
 
-    args = (datentime, suburb, location, updated, advice)
-    result = dbconn.execute(query, args)
+        args = (exposure['last_seen'], exposure['id'])
+        result = dbconn.execute(query, args)
 
-    if debug:
+    if debug and len(comms) > 0:
         print(comms)
 
 
