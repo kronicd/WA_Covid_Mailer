@@ -3,7 +3,7 @@
 Collects WA Covid-19 Exposure Locations from:
 
 * [Healthy WA's Covid19 Exposure Locations](https://www.healthywa.wa.gov.au/COVID19locations)
-* [Unofficial Civilian Compiled Exposure Sites](https://www.facebook.com/groups/708242463497733) - [Contribute Here](https://www.facebook.com/groups/708242463497733)
+* [Unofficial Civilian Compiled Exposure Sites](https://docs.google.com/spreadsheets/d/1-U8Ea9o9bnST5pzckC8lzwNNK_jO6kIVUAi5Uu_-Ltc/htmlview?pru=AAABfzYp9xU*O5BeDYIVxSR9HGqWRuiLNQ) - [Contribute Here](https://www.facebook.com/groups/708242463497733)
 * [Edith Cowan University](https://www.ecu.edu.au/covid-19/advice-for-staff)
 * [University of Western Australia](https://www.uwa.edu.au/covid-19-faq/Home)
 * [Murdoch University](https://www.murdoch.edu.au/notices/covid-19-advice)
