@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-from datetime import datetime
+from datetime import date, datetime
 from html.parser import HTMLParser
 from pprint import pprint
 import codecs
@@ -575,13 +575,29 @@ def uwa_GetLocations():
     outRows = []
 
     for row in rows:
-        date = row[0].text_content().strip()
-        location = row[1].text_content().strip()
-        time = row[2].text_content().strip()
+        record = {}
 
-        outRow = {'date': date, 'location': location, 'time': time}
+        record['date'] = row[0].text_content().strip()
+        record['location'] = row[1].text_content().strip()
+        record['time'] = row[2].text_content().strip()
+        record['last_seen'] = date_time
 
-        outRows.append(outRow)
+        query = """SELECT count(id), coalesce(id, 0) FROM uwa_exposures WHERE
+                    date = ?
+                    AND time = ?
+                    AND location = ?;"""
+        
+        args = (record['date'], record['time'], record['location'])
+        result = dbconn.execute(query, args)
+
+        id = result.fetchone()
+        if id[0] > 0:
+            record['id'] = id[1]
+        else:
+            record['id'] = None
+            record['first_seen'] = date_time
+
+        outRows.append(record)
 
 
     if (header[0].text_content().strip() == 'Date' and
@@ -594,6 +610,12 @@ def uwa_GetLocations():
     return outRows
 
 
+def uwa_buildDetails(exposure):
+    exposure_details = f"""Date: {exposure['date']}
+Time: {exposure['time']}
+Location: {exposure['location']}\n\n"""
+    
+    return exposure_details
 
 
 def murdoch_GetLocations():
@@ -615,14 +637,31 @@ def murdoch_GetLocations():
     outRows = []
 
     for row in rows:
-        date = row[0].text_content().strip()
-        time = row[1].text_content().strip()
-        campus = row[2].text_content().strip()
-        location = row[3].text_content().strip()
+        record = {}
 
+        record['date'] = row[0].text_content().strip()
+        record['time'] = row[1].text_content().strip()
+        record['campus'] = row[2].text_content().strip()
+        record['location'] = row[3].text_content().strip()
+        record['last_seen'] = date_time
 
-        outRow = {'date': date, 'time': time, 'campus': campus, 'location': location}
-        outRows.append(outRow)
+        query = """SELECT count(id), coalesce(id, 0) FROM murdoch_exposures WHERE
+                    date = ?
+                    AND time = ?
+                    AND campus = ?
+                    AND location = ?;"""
+        
+        args = (record['date'], record['time'], record['campus'], record['location'])
+        result = dbconn.execute(query, args)
+
+        id = result.fetchone()
+        if id[0] > 0:
+            record['id'] = id[1]
+        else:
+            record['id'] = None
+            record['first_seen'] = date_time
+
+        outRows.append(record)
 
 
     if (header[0].text_content().strip() == 'Date' and
@@ -636,6 +675,14 @@ def murdoch_GetLocations():
 
     return outRows
 
+
+def murdoch_buildDetails(exposure):
+    exposure_details = f"""Date: {exposure['date']}
+Time: {exposure['time']}
+Campus: {exposure['campus']}
+Location: {exposure['location']}\n\n"""
+    
+    return exposure_details
 
 
 def curtin_GetLocations():
@@ -658,15 +705,33 @@ def curtin_GetLocations():
     outRows = []
 
     for row in rows:
-        date = row[0].text_content().strip()
-        time = row[1].text_content().strip()
-        campus = row[2].text_content().strip()
-        location = row[3].text_content().strip()
-        contact_type = row[4].text_content().strip()
+        record = {}
 
+        record['date'] = row[0].text_content().strip()
+        record['time'] = row[1].text_content().strip()
+        record['campus'] = row[2].text_content().strip()
+        record['location'] = row[3].text_content().strip()
+        record['contact_type'] = row[4].text_content().strip()
+        record['last_seen'] = date_time
 
-        outRow = {'date': date, 'time': time, 'campus': campus, 'location': location, "contact_type": contact_type}
-        outRows.append(outRow)
+        query = """SELECT count(id), coalesce(id, 0) FROM curtin_exposures WHERE
+                    date = ?
+                    AND time = ?
+                    AND campus = ?
+                    AND location = ?
+                    AND contact_type = ?;"""
+        
+        args = (record['date'], record['time'], record['campus'], record['location'], record['contact_type'])
+        result = dbconn.execute(query, args)
+
+        id = result.fetchone()
+        if id[0] > 0:
+            record['id'] = id[1]
+        else:
+            record['id'] = None
+            record['first_seen'] = date_time
+
+        outRows.append(record)
 
 
     if (header[0].text_content().strip() == 'Date' and
@@ -680,6 +745,18 @@ def curtin_GetLocations():
         raise Exception("Curtin Failed - Parsing page failure")
 
     return outRows
+
+
+def curtin_buildDetails(exposure):
+    exposure_details = f"""Date: {exposure['date']}
+Time: {exposure['time']}
+Campus: {exposure['campus']}
+Location: {exposure['location']}
+Contact Type: {exposure['contact_type']}\n\n"""
+    
+    return exposure_details
+
+
 
 # load sqlite3
 dbconn = create_connection(db_file)
@@ -771,6 +848,69 @@ for exposure in ecu_exposures:
     
     else:
         query = f"""UPDATE ecu_exposures SET last_seen = ? 
+                    WHERE id = ? """
+
+        args = (exposure['last_seen'], exposure['id'])
+        result = dbconn.execute(query, args)
+
+    if debug and len(comms) > 0:
+        print(comms)
+
+for exposure in uwa_exposures:
+
+    if exposure['id'] is None:
+        comms = comms + uwa_buildDetails(exposure)
+
+        query = f"""INSERT INTO uwa_exposures (date, time, location, first_seen, last_seen) 
+                    VALUES (?,?,?,?,?) """
+
+        args = (exposure['date'], exposure['time'], exposure['location'], exposure['first_seen'], exposure['last_seen'])
+        result = dbconn.execute(query, args)
+    
+    else:
+        query = f"""UPDATE uwa_exposures SET last_seen = ? 
+                    WHERE id = ? """
+
+        args = (exposure['last_seen'], exposure['id'])
+        result = dbconn.execute(query, args)
+
+    if debug and len(comms) > 0:
+        print(comms)
+
+for exposure in murdoch_exposures:
+
+    if exposure['id'] is None:
+        comms = comms + murdoch_buildDetails(exposure)
+
+        query = f"""INSERT INTO murdoch_exposures (date, time, campus, location, first_seen, last_seen) 
+                    VALUES (?,?,?,?,?,?) """
+
+        args = (exposure['date'], exposure['time'], exposure['campus'], exposure['location'], exposure['first_seen'], exposure['last_seen'])
+        result = dbconn.execute(query, args)
+    
+    else:
+        query = f"""UPDATE murdoch_exposures SET last_seen = ? 
+                    WHERE id = ? """
+
+        args = (exposure['last_seen'], exposure['id'])
+        result = dbconn.execute(query, args)
+
+    if debug and len(comms) > 0:
+        print(comms)
+
+for exposure in curtin_exposures:
+
+    if exposure['id'] is None:
+        comms = comms + curtin_buildDetails(exposure)
+
+        query = f"""INSERT INTO curtin_exposures (date, time, campus, location, contact_type, first_seen, last_seen) 
+                    VALUES (?,?,?,?,?,?,?) """
+
+        args = (exposure['date'], exposure['time'], exposure['campus'], exposure['location'], exposure['contact_type'], exposure['first_seen'], exposure['last_seen'])
+        result = dbconn.execute(query, args)
+    
+    else:
+        query = f"""UPDATE curtin_exposures SET last_seen = ? 
                     WHERE id = ? """
 
         args = (exposure['last_seen'], exposure['id'])
