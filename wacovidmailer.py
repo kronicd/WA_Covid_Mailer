@@ -473,6 +473,7 @@ def sheet_cleanString(s):
     s = str(lxml.html.fromstring(s).text_content()).strip().replace('\r','').replace('\n','').rstrip(',')
     return s
 
+
 def sheet_buildDetails(exposure):
     exposure_details = f"""Date and Time: {exposure['datentime']}
 Suburb: {exposure['suburb']}
@@ -503,13 +504,33 @@ def ecu_GetLocations():
         rows = table.xpath('./tr')
 
         for row in rows:
-            date = row[0].text_content().strip()
-            time = row[1].text_content().strip()
-            building = row[2].text_content().strip()
-            room = row[3].text_content().strip()
+            record = {}
 
-            outRow = {'date': date, 'time': time, 'building': building, 'room': room}
-            outRows.append(outRow)
+            record['campus'] = 'Campus'
+            record['date'] = row[0].text_content().strip()
+            record['time'] = row[1].text_content().strip()
+            record['building'] = row[2].text_content().strip()
+            record['room'] = row[3].text_content().strip()
+            record['last_seen'] = date_time
+
+            query = """SELECT count(id), coalesce(id, 0) FROM ecu_exposures WHERE
+                        campus = ?
+                        AND date = ?
+                        AND time = ?
+                        AND building = ?
+                        AND room = ?;"""
+            
+            args = (record['campus'], record['date'], record['time'], record['building'], record['room'])
+            result = dbconn.execute(query, args)
+
+            id = result.fetchone()
+            if id[0] > 0:
+                record['id'] = id[1]
+            else:
+                record['id'] = None
+                record['first_seen'] = date_time
+
+            outRows.append(record)
 
     for table in tables:
         header = table.xpath('.//thead')[0][0]
@@ -525,6 +546,14 @@ def ecu_GetLocations():
     return outRows
 
 
+def ecu_buildDetails(exposure):
+    exposure_details = f"""Date: {exposure['date']}
+Time: {exposure['time']}
+Campus: {exposure['campus']}
+Building: {exposure['building']}
+Room: {exposure['room']}\n\n"""
+    
+    return exposure_details
 
 
 def uwa_GetLocations():
@@ -721,6 +750,27 @@ for exposure in sheet_exposures:
     
     else:
         query = f"""UPDATE sheet_exposures SET last_seen = ? 
+                    WHERE id = ? """
+
+        args = (exposure['last_seen'], exposure['id'])
+        result = dbconn.execute(query, args)
+
+    if debug and len(comms) > 0:
+        print(comms)
+
+for exposure in ecu_exposures:
+
+    if exposure['id'] is None:
+        comms = comms + ecu_buildDetails(exposure)
+
+        query = f"""INSERT INTO ecu_exposures (date, time, campus, building, room, first_seen, last_seen) 
+                    VALUES (?,?,?,?,?,?,?) """
+
+        args = (exposure['date'], exposure['time'], exposure['campus'], exposure['building'], exposure['room'], exposure['first_seen'], exposure['last_seen'])
+        result = dbconn.execute(query, args)
+    
+    else:
+        query = f"""UPDATE ecu_exposures SET last_seen = ? 
                     WHERE id = ? """
 
         args = (exposure['last_seen'], exposure['id'])
