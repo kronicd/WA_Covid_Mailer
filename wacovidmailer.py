@@ -512,12 +512,13 @@ def ecu_GetLocations():
 
 
     for table in tables:
+        campus = html_cleanString(table.getparent().getparent().getparent().getparent()[0].text_content().strip())
         rows = table.xpath('./tr')
 
         for row in rows:
             record = {}
 
-            record['campus'] = 'Campus'
+            record['campus'] = campus
             record['date'] = html_cleanString(row[0].text_content().strip())
             record['time'] = html_cleanString(row[1].text_content().strip())
             record['building'] = html_cleanString(row[2].text_content().strip())
@@ -794,14 +795,6 @@ except Exception as e:
 # clean exposures list and check if they've already been seen
 wahealth_alerts = wahealth_filterExposures(wahealth_exposures)
 
-
-
-
-
-
-
-
-
 # for each new exposure add it to the DB and add it to a string for comms
 
 wahealth_comms = ""
@@ -964,30 +957,26 @@ if(len(curtin_comms) > 0):
 if debug and len(comms) > 0:
     print(comms)
 
-# # kludge ugh
-# mailPostSuccess = 200
+# kludge ugh
+mailPostSuccess = 200
+if not debug:
+ if len(comms) > 0 and dreamhostAnounces:
+     mailPostSuccess = sendDhAnnounce(comms)
+ if len(comms) > 0 and emailAlerts:
+     sendEmails(comms)
+ if len(comms) > 0 and slackAlerts:
+     post_message_to_slack(comms)
+ if len(comms) > 0 and discordAlerts:
+     post_message_to_discord(comms)
 
-# if not debug:
-#     if len(comms) > 0 and dreamhostAnounces:
-#         mailPostSuccess = sendDhAnnounce(comms)
+dbconn.commit()
 
-#     if len(comms) > 0 and emailAlerts:
-#         sendEmails(comms)
+# we don't close as we're using autocommit, this results in greater 
+# compatability with different versions of sqlite3
 
-#     if len(comms) > 0 and slackAlerts:
-#         post_message_to_slack(comms)
-
-#     if len(comms) > 0 and discordAlerts:
-#         post_message_to_discord(comms)
-
-
-# dbconn.commit()
-# # we don't close as we're using autocommit, this results in greater 
-# # compatability with different versions of sqlite3
-
-# if len(comms) > 0 and dreamhostAnounces and mailPostSuccess != 200 and not debug:
-#     print(result)
-#     os.replace(f"{db_file}.bak", db_file)
-#     sendAdminAlert("Unable to send mail, please investigate")
-# else:
-#     os.remove(f"{db_file}.bak")
+if len(comms) > 0 and dreamhostAnounces and mailPostSuccess != 200 and not debug:
+ print(result)
+ os.replace(f"{db_file}.bak", db_file)
+ sendAdminAlert("Unable to send mail, please investigate")
+else:
+ os.remove(f"{db_file}.bak")
