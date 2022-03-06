@@ -17,6 +17,7 @@ import smtplib, ssl
 import sqlite3
 import subprocess
 import time
+import traceback
 
 
 waGovUrl = "https://www.healthywa.wa.gov.au/COVID19locations"
@@ -243,6 +244,7 @@ Subject: {AdminSubjLine}
                 print("SMTP error occurred: " + str(e))
     else:
         print("Admin alerts disabled")
+        print(errorMsg)
 
 
 def post_message_to_slack(text, blocks=None):
@@ -329,6 +331,17 @@ def sendDhAnnounce(comms):
     print(x.text)
     return x.status_code
 
+
+def html_cleanString(s):
+
+    try:
+        s = str(lxml.html.fromstring(s).text_content())
+    except:
+        pass
+
+    s = s.strip().replace('\r','').replace('\n','').rstrip(',')
+
+    return s
 
 def wahealth_GetLocations():
 
@@ -441,9 +454,9 @@ def sheet_GetLocations():
         exposure = {}
 
         if record[4] == "Business":
-            exposure['datentime'] = sheet_cleanString(record[2])
-            exposure['suburb'] = sheet_cleanString(record[1])
-            exposure['location'] = sheet_cleanString(record[0]) + " " + sheet_cleanString(record[3])
+            exposure['datentime'] = html_cleanString(record[2])
+            exposure['suburb'] = html_cleanString(record[1])
+            exposure['location'] = html_cleanString(record[0]) + " " + html_cleanString(record[3])
             exposure['last_seen'] = date_time
 
             query = """SELECT count(id), coalesce(id, 0) FROM sheet_exposures WHERE
@@ -468,10 +481,6 @@ def sheet_GetLocations():
 
     return sheetExposures
 
-
-def sheet_cleanString(s):
-    s = str(lxml.html.fromstring(s).text_content()).strip().replace('\r','').replace('\n','').rstrip(',')
-    return s
 
 
 def sheet_buildDetails(exposure):
@@ -507,10 +516,10 @@ def ecu_GetLocations():
             record = {}
 
             record['campus'] = 'Campus'
-            record['date'] = row[0].text_content().strip()
-            record['time'] = row[1].text_content().strip()
-            record['building'] = row[2].text_content().strip()
-            record['room'] = row[3].text_content().strip()
+            record['date'] = html_cleanString(row[0].text_content().strip())
+            record['time'] = html_cleanString(row[1].text_content().strip())
+            record['building'] = html_cleanString(row[2].text_content().strip())
+            record['room'] = html_cleanString(row[3].text_content().strip())
             record['last_seen'] = date_time
 
             query = """SELECT count(id), coalesce(id, 0) FROM ecu_exposures WHERE
@@ -577,9 +586,9 @@ def uwa_GetLocations():
     for row in rows:
         record = {}
 
-        record['date'] = row[0].text_content().strip()
-        record['location'] = row[1].text_content().strip()
-        record['time'] = row[2].text_content().strip()
+        record['date'] = html_cleanString(row[0].text_content().strip())
+        record['location'] = html_cleanString(row[1].text_content().strip())
+        record['time'] = html_cleanString(row[2].text_content().strip())
         record['last_seen'] = date_time
 
         query = """SELECT count(id), coalesce(id, 0) FROM uwa_exposures WHERE
@@ -639,10 +648,10 @@ def murdoch_GetLocations():
     for row in rows:
         record = {}
 
-        record['date'] = row[0].text_content().strip()
-        record['time'] = row[1].text_content().strip()
-        record['campus'] = row[2].text_content().strip()
-        record['location'] = row[3].text_content().strip()
+        record['date'] = html_cleanString(row[0].text_content().strip())
+        record['time'] = html_cleanString(row[1].text_content().strip())
+        record['campus'] = html_cleanString(row[2].text_content().strip())
+        record['location'] = html_cleanString(row[3].text_content().strip())
         record['last_seen'] = date_time
 
         query = """SELECT count(id), coalesce(id, 0) FROM murdoch_exposures WHERE
@@ -707,11 +716,11 @@ def curtin_GetLocations():
     for row in rows:
         record = {}
 
-        record['date'] = row[0].text_content().strip()
-        record['time'] = row[1].text_content().strip()
-        record['campus'] = row[2].text_content().strip()
-        record['location'] = row[3].text_content().strip()
-        record['contact_type'] = row[4].text_content().strip()
+        record['date'] = html_cleanString(row[0].text_content().strip())
+        record['time'] = html_cleanString(row[1].text_content().strip())
+        record['campus'] = html_cleanString(row[2].text_content().strip())
+        record['location'] = html_cleanString(row[3].text_content().strip())
+        record['contact_type'] = html_cleanString(row[4].text_content().strip())
         record['last_seen'] = date_time
 
         query = """SELECT count(id), coalesce(id, 0) FROM curtin_exposures WHERE
@@ -776,6 +785,7 @@ try:
     murdoch_exposures = murdoch_GetLocations()
 except Exception as e:
     print(e)
+    traceback.print_stack()
     sendAdminAlert("Unable to fetch data, please investigate")
     exit()
 
@@ -792,6 +802,9 @@ wahealth_alerts = wahealth_filterExposures(wahealth_exposures)
 
 # for each new exposure add it to the DB and add it to a string for comms
 comms = ""
+
+
+
 
 for exposure in wahealth_alerts:
 
@@ -814,6 +827,10 @@ for exposure in wahealth_alerts:
     if debug and len(comms) > 0:
         print(comms)
 
+
+
+
+
 for exposure in sheet_exposures:
 
     if exposure['id'] is None:
@@ -834,6 +851,8 @@ for exposure in sheet_exposures:
 
     if debug and len(comms) > 0:
         print(comms)
+
+
 
 for exposure in ecu_exposures:
 
@@ -856,6 +875,9 @@ for exposure in ecu_exposures:
     if debug and len(comms) > 0:
         print(comms)
 
+
+
+
 for exposure in uwa_exposures:
 
     if exposure['id'] is None:
@@ -877,6 +899,9 @@ for exposure in uwa_exposures:
     if debug and len(comms) > 0:
         print(comms)
 
+
+
+
 for exposure in murdoch_exposures:
 
     if exposure['id'] is None:
@@ -897,6 +922,9 @@ for exposure in murdoch_exposures:
 
     if debug and len(comms) > 0:
         print(comms)
+
+
+
 
 for exposure in curtin_exposures:
 
