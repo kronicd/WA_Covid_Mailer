@@ -1,6 +1,21 @@
 # WA Covid Mailer
 
-Sends alerts from [Healthy WA's Covid19 Exposure Locations](https://www.healthywa.wa.gov.au/COVID19locations) to via email, slack, discord, and [dreamhost announce](https://help.dreamhost.com/hc/en-us/articles/215683497-How-do-I-configure-and-manage-an-Announcement-List-) lists.
+Collects WA Covid-19 Exposure Locations from:
+
+* [Healthy WA's Covid19 Exposure Locations](https://www.healthywa.wa.gov.au/COVID19locations)
+* [Unofficial Civilian Compiled Exposure Sites](https://www.facebook.com/groups/708242463497733) - [Contribute Here](https://www.facebook.com/groups/708242463497733)
+* [Edith Cowan University](https://www.ecu.edu.au/covid-19/advice-for-staff)
+* [University of Western Australia](https://www.uwa.edu.au/covid-19-faq/Home)
+* [Murdoch University](https://www.murdoch.edu.au/notices/covid-19-advice)
+* [Curtin University](https://www.curtin.edu.au/novel-coronavirus/recent-exposure-sites-on-campus/)
+
+and sends them to:
+
+* Email
+* [Dreamhost announce](https://help.dreamhost.com/hc/en-us/articles/215683497-How-do-I-configure-and-manage-an-Announcement-List-) lists
+* Slack
+* Discord
+
 
 ## Setup
 
