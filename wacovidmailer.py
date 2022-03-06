@@ -801,15 +801,19 @@ wahealth_alerts = wahealth_filterExposures(wahealth_exposures)
 
 
 # for each new exposure add it to the DB and add it to a string for comms
-comms = ""
 
-
+wahealth_comms = ""
+sheet_comms = ""
+ecu_comms = ""
+uwa_comms = ""
+murdoch_comms = ""
+curtin_comms = ""
 
 
 for exposure in wahealth_alerts:
 
     if exposure['id'] is None:
-        comms = comms + wahealth_buildDetails(exposure)
+        wahealth_comms = wahealth_comms + wahealth_buildDetails(exposure)
 
         query = f"""INSERT INTO wahealth_exposures (datentime, suburb, location, updated, advice, first_seen, last_seen) 
                     VALUES (?,?,?,?,?,?,?) """
@@ -824,17 +828,13 @@ for exposure in wahealth_alerts:
         args = (exposure['last_seen'], exposure['id'])
         result = dbconn.execute(query, args)
 
-    if debug and len(comms) > 0:
-        print(comms)
-
-
-
-
+    #if debug and len(wahealth_comms) > 0:
+    #    print(wahealth_comms)
 
 for exposure in sheet_exposures:
 
     if exposure['id'] is None:
-        comms = comms + sheet_buildDetails(exposure)
+        sheet_comms = sheet_comms + sheet_buildDetails(exposure)
 
         query = f"""INSERT INTO sheet_exposures (datentime, suburb, location, first_seen, last_seen) 
                     VALUES (?,?,?,?,?) """
@@ -849,15 +849,13 @@ for exposure in sheet_exposures:
         args = (exposure['last_seen'], exposure['id'])
         result = dbconn.execute(query, args)
 
-    if debug and len(comms) > 0:
-        print(comms)
-
-
+    #if debug and len(sheet_comms) > 0:
+    #    print(sheet_comms)
 
 for exposure in ecu_exposures:
 
     if exposure['id'] is None:
-        comms = comms + ecu_buildDetails(exposure)
+        ecu_comms = ecu_comms + ecu_buildDetails(exposure)
 
         query = f"""INSERT INTO ecu_exposures (date, time, campus, building, room, first_seen, last_seen) 
                     VALUES (?,?,?,?,?,?,?) """
@@ -872,16 +870,13 @@ for exposure in ecu_exposures:
         args = (exposure['last_seen'], exposure['id'])
         result = dbconn.execute(query, args)
 
-    if debug and len(comms) > 0:
-        print(comms)
-
-
-
+    #if debug and len(ecu_comms) > 0:
+    #    print(ecu_comms)
 
 for exposure in uwa_exposures:
 
     if exposure['id'] is None:
-        comms = comms + uwa_buildDetails(exposure)
+        uwa_comms = uwa_comms + uwa_buildDetails(exposure)
 
         query = f"""INSERT INTO uwa_exposures (date, time, location, first_seen, last_seen) 
                     VALUES (?,?,?,?,?) """
@@ -896,16 +891,13 @@ for exposure in uwa_exposures:
         args = (exposure['last_seen'], exposure['id'])
         result = dbconn.execute(query, args)
 
-    if debug and len(comms) > 0:
-        print(comms)
-
-
-
+    #if debug and len(uwa_comms) > 0:
+    #    print(uwa_comms)
 
 for exposure in murdoch_exposures:
 
     if exposure['id'] is None:
-        comms = comms + murdoch_buildDetails(exposure)
+        murdoch_comms = murdoch_comms + murdoch_buildDetails(exposure)
 
         query = f"""INSERT INTO murdoch_exposures (date, time, campus, location, first_seen, last_seen) 
                     VALUES (?,?,?,?,?,?) """
@@ -920,16 +912,13 @@ for exposure in murdoch_exposures:
         args = (exposure['last_seen'], exposure['id'])
         result = dbconn.execute(query, args)
 
-    if debug and len(comms) > 0:
-        print(comms)
-
-
-
+    #if debug and len(murdoch_comms) > 0:
+    #    print(murdoch_comms)
 
 for exposure in curtin_exposures:
 
     if exposure['id'] is None:
-        comms = comms + curtin_buildDetails(exposure)
+        curtin_comms = curtin_comms + curtin_buildDetails(exposure)
 
         query = f"""INSERT INTO curtin_exposures (date, time, campus, location, contact_type, first_seen, last_seen) 
                     VALUES (?,?,?,?,?,?,?) """
@@ -944,9 +933,34 @@ for exposure in curtin_exposures:
         args = (exposure['last_seen'], exposure['id'])
         result = dbconn.execute(query, args)
 
-    if debug and len(comms) > 0:
-        print(comms)
+    #if debug and len(curtin_comms) > 0:
+    #    print(curtin_comms)
 
+
+# Build report
+
+comms = ""
+
+if(len(wahealth_comms) > 0):
+    comms = comms + "*WA Health Exposure Sites*\n\n" + wahealth_comms + "\n\n"
+
+if(len(sheet_comms) > 0):
+    comms = comms + "*Unofficial Civilian Compiled Exposure Sites*\n\n" + sheet_comms + "\n\n"
+
+if(len(ecu_comms) > 0):
+    comms = comms + "*Edith Cowan University Exposure Sites*\n\n" + ecu_comms + "\n\n"
+
+if(len(uwa_comms) > 0):
+    comms = comms + "*University of Western Australia Exposure Sites*\n\n" + uwa_comms + "\n\n"
+
+if(len(murdoch_comms) > 0):
+    comms = comms + "*Murdoch University Exposure Sites*\n\n" + murdoch_comms + "\n\n"
+
+if(len(curtin_comms) > 0):
+    comms = comms + "*Curtin University Exposure Sites*\n\n" + curtin_comms + "\n\n"
+
+if debug and len(comms) > 0:
+    print(comms)
 
 # # kludge ugh
 # mailPostSuccess = 200
