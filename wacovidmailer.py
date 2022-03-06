@@ -21,7 +21,9 @@ import traceback
 
 
 waGovUrl = "https://www.healthywa.wa.gov.au/COVID19locations"
-date_time = datetime.now(pytz.timezone("Australia/Perth")).strftime("%d/%m/%Y %H:%M:%S")
+current_datetime = datetime.now(pytz.timezone("Australia/Perth"))
+date_time = current_datetime.strftime("%d/%m/%Y %H:%M:%S")
+unix_timestamp = int(current_datetime.timestamp())
 
 
 ### CONFIGURATION ITEMS ###
@@ -128,8 +130,8 @@ def create_connection(db_file):
                     location text,
                     updated text,
                     advice text,
-                    first_seen text,
-                    last_seen text
+                    first_seen integer,
+                    last_seen integer
                 );
             """
         elif exposures_table == 'sheet_exposures':
@@ -139,8 +141,8 @@ def create_connection(db_file):
                     datentime text,
                     location text,
                     suburb text,
-                    first_seen text,
-                    last_seen text
+                    first_seen integer,
+                    last_seen integer
                 );
             """
         elif exposures_table == 'ecu_exposures':
@@ -152,8 +154,8 @@ def create_connection(db_file):
                     date text,
                     room text,
                     time text,
-                    first_seen text,
-                    last_seen text
+                    first_seen integer,
+                    last_seen integer
                 );
             """
         elif exposures_table == 'uwa_exposures':
@@ -163,8 +165,8 @@ def create_connection(db_file):
                     date text,
                     location text,
                     time text,
-                    first_seen text,
-                    last_seen text
+                    first_seen integer,
+                    last_seen integer
                 );
             """
         elif exposures_table == 'murdoch_exposures':
@@ -175,8 +177,8 @@ def create_connection(db_file):
                     date text,
                     location text,
                     time text,
-                    first_seen text,
-                    last_seen text
+                    first_seen integer,
+                    last_seen integer
                 );
             """
         elif exposures_table == 'curtin_exposures':
@@ -188,8 +190,8 @@ def create_connection(db_file):
                     date text,
                     location text,
                     time text,
-                    first_seen text,
-                    last_seen text
+                    first_seen integer,
+                    last_seen integer
                 );
             """
         
@@ -409,7 +411,7 @@ def wahealth_filterExposures(exposures):
         record['location'] = wahealth_cleanString(exposure[3].text_content())
         record['updated'] = wahealth_cleanString(exposure[4].text_content())
         record['advice'] = wahealth_cleanString(exposure[5].text_content())
-        record['last_seen'] = date_time
+        record['last_seen'] = unix_timestamp
 
         query = """SELECT count(id), coalesce(id, 0) FROM wahealth_exposures WHERE 
                     datentime = ? 
@@ -426,7 +428,7 @@ def wahealth_filterExposures(exposures):
             record['id'] = id[1]
         else:
             record['id'] = None
-            record['first_seen'] = date_time
+            record['first_seen'] = unix_timestamp
         
         alerts.append(record)
 
@@ -457,7 +459,7 @@ def sheet_GetLocations():
             exposure['datentime'] = html_cleanString(record[2])
             exposure['suburb'] = html_cleanString(record[1])
             exposure['location'] = html_cleanString(record[0]) + " " + html_cleanString(record[3])
-            exposure['last_seen'] = date_time
+            exposure['last_seen'] = unix_timestamp
 
             query = """SELECT count(id), coalesce(id, 0) FROM sheet_exposures WHERE
                         datentime = ?
@@ -472,7 +474,7 @@ def sheet_GetLocations():
                 exposure['id'] = id[1]
             else:
                 exposure['id'] = None
-                exposure['first_seen'] = date_time
+                exposure['first_seen'] = unix_timestamp
 
             sheetExposures.append(exposure)
 
@@ -520,7 +522,7 @@ def ecu_GetLocations():
             record['time'] = html_cleanString(row[1].text_content().strip())
             record['building'] = html_cleanString(row[2].text_content().strip())
             record['room'] = html_cleanString(row[3].text_content().strip())
-            record['last_seen'] = date_time
+            record['last_seen'] = unix_timestamp
 
             query = """SELECT count(id), coalesce(id, 0) FROM ecu_exposures WHERE
                         campus = ?
@@ -537,7 +539,7 @@ def ecu_GetLocations():
                 record['id'] = id[1]
             else:
                 record['id'] = None
-                record['first_seen'] = date_time
+                record['first_seen'] = unix_timestamp
 
             outRows.append(record)
 
@@ -589,7 +591,7 @@ def uwa_GetLocations():
         record['date'] = html_cleanString(row[0].text_content().strip())
         record['location'] = html_cleanString(row[1].text_content().strip())
         record['time'] = html_cleanString(row[2].text_content().strip())
-        record['last_seen'] = date_time
+        record['last_seen'] = unix_timestamp
 
         query = """SELECT count(id), coalesce(id, 0) FROM uwa_exposures WHERE
                     date = ?
@@ -604,7 +606,7 @@ def uwa_GetLocations():
             record['id'] = id[1]
         else:
             record['id'] = None
-            record['first_seen'] = date_time
+            record['first_seen'] = unix_timestamp
 
         outRows.append(record)
 
@@ -652,7 +654,7 @@ def murdoch_GetLocations():
         record['time'] = html_cleanString(row[1].text_content().strip())
         record['campus'] = html_cleanString(row[2].text_content().strip())
         record['location'] = html_cleanString(row[3].text_content().strip())
-        record['last_seen'] = date_time
+        record['last_seen'] = unix_timestamp
 
         query = """SELECT count(id), coalesce(id, 0) FROM murdoch_exposures WHERE
                     date = ?
@@ -668,7 +670,7 @@ def murdoch_GetLocations():
             record['id'] = id[1]
         else:
             record['id'] = None
-            record['first_seen'] = date_time
+            record['first_seen'] = unix_timestamp
 
         outRows.append(record)
 
@@ -721,7 +723,7 @@ def curtin_GetLocations():
         record['campus'] = html_cleanString(row[2].text_content().strip())
         record['location'] = html_cleanString(row[3].text_content().strip())
         record['contact_type'] = html_cleanString(row[4].text_content().strip())
-        record['last_seen'] = date_time
+        record['last_seen'] = unix_timestamp
 
         query = """SELECT count(id), coalesce(id, 0) FROM curtin_exposures WHERE
                     date = ?
@@ -738,7 +740,7 @@ def curtin_GetLocations():
             record['id'] = id[1]
         else:
             record['id'] = None
-            record['first_seen'] = date_time
+            record['first_seen'] = unix_timestamp
 
         outRows.append(record)
 
