@@ -226,28 +226,28 @@ Subject: {subjLine}
 def sendAdminAlert(errorMsg):
 
     if(adminAlerts):
-        for destEmail in AdminDestAddr:
+        for adminDestEmail in AdminDestAddr:
 
             message = f"""To: {AdminDestAddr}
 From: {adminFromAddr}
 Reply-To: {AdminReplyAddr}
 Subject: {AdminSubjLine}
 
-
 {errorMsg}.""".encode("ascii", "replace")
 
             try:
-                context = ssl.create_default_context()
-
-                with smtplib.SMTP_SSL(adminSmtpServ, adminSmtpPort, context=context) as server:
+                with smtplib.SMTP(adminSmtpServ, adminSmtpPort) as server:
+                    server.starttls()
                     server.sendmail(adminFromAddr, adminDestEmail, message)
+                    server.ehlo()
+                    server.login(adminSmtpUser, adminSmtpPass)
+
                     print(f"Email sent to {destEmail}")
             except smtplib.SMTPException as e:
                 print("SMTP error occurred: " + str(e))
     else:
         print("Admin alerts disabled")
         print(errorMsg)
-
 
 def post_message_to_slack(text, blocks=None):
 
@@ -781,7 +781,8 @@ shutil.copy(db_file, f"{db_file}.bak")
 # get exposures
 try:
     wahealth_exposures = wahealth_GetLocations()
-    sheet_exposures = sheet_GetLocations()
+    #sheet_exposures = sheet_GetLocations()
+    sheet_exposures = []
     ecu_exposures = ecu_GetLocations()
     uwa_exposures = uwa_GetLocations()
     curtin_exposures = curtin_GetLocations()
