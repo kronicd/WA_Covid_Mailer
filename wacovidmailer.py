@@ -238,11 +238,11 @@ Subject: {AdminSubjLine}
             try:
                 with smtplib.SMTP(adminSmtpServ, adminSmtpPort) as server:
                     server.starttls()
-                    server.sendmail(adminFromAddr, adminDestEmail, message)
                     server.ehlo()
                     server.login(adminSmtpUser, adminSmtpPass)
+                    server.sendmail(adminFromAddr, adminDestEmail, message)
 
-                    print(f"Email sent to {destEmail}")
+                    print(f"Email sent to {adminDestEmail}")
             except smtplib.SMTPException as e:
                 print("SMTP error occurred: " + str(e))
     else:
