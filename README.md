@@ -19,7 +19,7 @@ and sends them to Discord and adds them to a database.
 
 ~~~json
 {
-    "database_path": "/path/to/database.db",
+    "database_file": "/path/to/database.db",
     "discord_webhooks": [
         "https://discordapp.com/api/webhooks/XXXXXXX/XXXXXXX"
     ]
