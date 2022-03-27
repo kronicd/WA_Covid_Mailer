@@ -30,7 +30,7 @@ and sends them to Discord and adds them to a database.
 
 This project depends on a few libraries that can be installed with
 ~~~
-pip3 install requests lxml sqlite3 pytz geopy
+pip3 install requests lxml pytz geopy
 ~~~
 
 ### Setup a cronjob
