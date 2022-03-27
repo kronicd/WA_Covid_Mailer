@@ -11,18 +11,25 @@ def chunks(l, n):
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
+current_datetime = dt.datetime.now(pytz.timezone("Australia/Perth"))
+unix_timestamp = int(current_datetime.timestamp())
+
 with open("config.json") as f:
     config = json.load(f)
 DB_FILE = config["database_file"]
 DISCORD_WEBHOOKS = config["discord_webhooks"]
 
-current_datetime = dt.datetime.now(pytz.timezone("Australia/Perth"))
-unix_timestamp = int(current_datetime.timestamp())
-
 directory, file = os.path.split(DB_FILE)
 if not os.path.exists(directory):
     os.makedirs(directory)
 conn = sqlite3.connect(DB_FILE)
+
+last_run_file = ".last_run"
+if os.path.exists(last_run_file):
+    with open(last_run_file) as f:
+        LAST_RUN = dt.datetime.fromtimestamp(int(f.read()))
+else:
+    LAST_RUN = dt.datetime.fromtimestamp(0)
 
 # Create tables if needed
 table_create = """
@@ -42,11 +49,14 @@ conn.execute(table_create)
 conn.commit()
 
 exposures = \
-    exposure_parser.murdoch_exposures()  + \
-    exposure_parser.uwa_exposures()      + \
-    exposure_parser.ecu_exposures()      + \
-    exposure_parser.civilian_exposures() + \
-    exposure_parser.wahealth_exposures()
+    exposure_parser.murdoch_exposures()             + \
+    exposure_parser.uwa_exposures()                 + \
+    exposure_parser.ecu_exposures()                 + \
+    exposure_parser.civilian_exposures(True)        + \
+    exposure_parser.wahealth_exposures(LAST_RUN)
+
+with open(last_run_file, "w+") as f:
+    f.write(str(unix_timestamp))
 
 new_exposures = []
 
@@ -59,7 +69,6 @@ for exposure in exposures:
         new_exposures.append(exposure)
         query = "INSERT INTO ExposureSites (Latitude, Longitude, StartTime, EndTime, Location, Advice, FirstSeen, LastSeen) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         conn.execute(query, (exposure.address.latitude, exposure.address.longitude, start_time, end_time, exposure.location_descriptor, exposure.advice, unix_timestamp, unix_timestamp))
-        print(exposure)
 conn.commit()
 
 for url in DISCORD_WEBHOOKS:

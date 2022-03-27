@@ -1,1 +1,4 @@
 __pycache__/**
+config.json
+.civilian_hashes.bin
+.last_run

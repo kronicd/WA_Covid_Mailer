@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
+from functools import partial
 import datetime as dt
+import hashlib
+import os
 from typing import List
 import lxml.html
 import requests
@@ -19,7 +22,7 @@ def html_clean_string(s):
     s = s.strip().replace('\r','').replace('\n','').rstrip(',')
     return s
 
-def wahealth_exposures() -> List[exposure_tools.Exposure]:
+def wahealth_exposures(since: dt.datetime = None) -> List[exposure_tools.Exposure]:
     req = requests.get("https://www.healthywa.wa.gov.au/COVID19locations")
     if req.status_code != 200:
         raise Exception(f"Failed to get HealthyWA exposure sheet ({req.reason})")
@@ -46,9 +49,13 @@ def wahealth_exposures() -> List[exposure_tools.Exposure]:
     exposures = []
 
     for row in rows:
-        date_time_str = wahealth_clean_string(row[1].text_content())
-        address = wahealth_clean_string(row[3].text_content()) + ", " + wahealth_clean_string(row[2].text_content())
-        advice = wahealth_clean_string(row[5].text_content())
+        updated = dt.datetime.strptime(row[4].text_content(), "%d/%m/%Y")
+        if since:
+            if updated.date() < since.date():
+                continue  # If this entry hasn't been updated since the last run then it contains no new information and we can skip it
+        date_time_str = _wahealth_clean_string(row[1].text_content())
+        address = _wahealth_clean_string(row[3].text_content()) + ", " + _wahealth_clean_string(row[2].text_content())
+        advice = _wahealth_clean_string(row[5].text_content())
         for expose_date in date_time_str.split(";"):
             expose_date = expose_date.strip()
             if expose_date.count("/") == 4:
@@ -79,7 +86,7 @@ def wahealth_exposures() -> List[exposure_tools.Exposure]:
     return exposures
 
 
-def wahealth_clean_string(location):
+def _wahealth_clean_string(location):
     new_loc = ""
     location = location.replace("\xa0", "")
     for line in location.split("\n"):
@@ -87,7 +94,9 @@ def wahealth_clean_string(location):
     return new_loc.rstrip(", ").lstrip(", ").replace(", , ", "; ").replace(" , ", " ").rstrip("\r\n")
 
 
-def civilian_exposures() -> List[exposure_tools.Exposure]:
+def civilian_exposures(get_new: bool = False, keep_hash_list: bool = True) -> List[exposure_tools.Exposure]:
+    
+    keep_hash_list |= get_new
 
     # Consumer: https://docs.google.com/spreadsheets/d/1-U8Ea9o9bnST5pzckC8lzwNNK_jO6kIVUAi5Uu_-Ltc/edit?fbclid=IwAR3EaVvU0di14R6zqqfFP7sDLCwPOYax_SjMcDlmV2D2leqKGRAROCInpj4#gid=1427159313
     # Detailed/Admin: https://docs.google.com/spreadsheets/d/12fN17qFR8ruSk2yf29CR1S6xZMs_nve2ww_6FJk7__8/edit#gid=0
@@ -104,33 +113,43 @@ def civilian_exposures() -> List[exposure_tools.Exposure]:
     split = contents.splitlines()
     reader = csv.reader(split)
 
+    civilian_hash_path = ".civilian_hashes.bin"
+    civilian_hashes = []
+    new_hashes = []
+
+    if os.path.exists(civilian_hash_path):
+        with open(civilian_hash_path, "rb") as f:
+            for chunk in iter(partial(f.read, 16), b''):
+                civilian_hashes.append(chunk)
+
     exposures = []
 
     for record in reader:
         if record[4] == "Business" or record[4] == "Government":
-            try:
-                address = html_clean_string(record[3])
-                str_datetime = html_clean_string(record[2])
-                if "times unknown" in str_datetime:
-                    date = dt.datetime.strptime(str_datetime, "%d/%m/%Y times unknown")
-                    start_time = dt.time()
-                    end_time = dt.time()
-                else:
-                    str_date, str_time = str_datetime.replace(" from ", " approximately ").split(" approximately ")
-                    date = dt.datetime.strptime(str_date, "%d/%m/%Y")
-                    str_time_start, str_time_end = str_time.split(" to ")
-                    start_time = dt.datetime.strptime(str_time_start, "%I:%M %p").time()
-                    end_time = dt.datetime.strptime(str_time_end, "%I:%M %p").time()
+            address = html_clean_string(record[3])
+            str_datetime = html_clean_string(record[2])
+            if keep_hash_list:
+                exposure_hash = hashlib.md5((address + str_datetime).encode()).digest()
+                new_hashes.append(exposure_hash)
+                if exposure_hash in civilian_hashes and get_new:
+                    continue
+            if "times unknown" in str_datetime:
+                date = dt.datetime.strptime(str_datetime, "%d/%m/%Y times unknown")
+                start_time = dt.time()
+                end_time = dt.time()
+            else:
+                str_date, str_time = str_datetime.replace(" from ", " approximately ").split(" approximately ")
+                date = dt.datetime.strptime(str_date, "%d/%m/%Y")
+                str_time_start, str_time_end = str_time.split(" to ")
+                start_time = dt.datetime.strptime(str_time_start, "%I:%M %p").time()
+                end_time = dt.datetime.strptime(str_time_end, "%I:%M %p").time()
 
-                exposure = exposure_tools.Exposure(dt.datetime.combine(date, start_time), address, record[0], dt.datetime.combine(date, end_time))
-                exposures.append(exposure)
+            exposure = exposure_tools.Exposure(dt.datetime.combine(date, start_time), address, record[0], dt.datetime.combine(date, end_time))
+            exposures.append(exposure)
 
-            except AttributeError as e:
-                print(f"Nonfatal error: Record '{record}' could not be parsed. (Geolocation failed)")
-                #raise e
-
-    if(len(exposures) < 1):
-        raise Exception("Civilian exposure sheet failed; no records were found.")
+    with open(civilian_hash_path, "wb+") as f:
+        for h in new_hashes:
+            f.write(h)
 
     return exposures
 
