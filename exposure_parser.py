@@ -7,7 +7,7 @@ import requests
 import codecs
 import csv
 
-import exposures
+import exposure_tools
 
 NOW = dt.datetime.now()
 
@@ -19,7 +19,7 @@ def html_clean_string(s):
     s = s.strip().replace('\r','').replace('\n','').rstrip(',')
     return s
 
-def wahealth_exposures() -> List[exposures.Exposure]:
+def wahealth_exposures() -> List[exposure_tools.Exposure]:
     req = requests.get("https://www.healthywa.wa.gov.au/COVID19locations")
     if req.status_code != 200:
         raise Exception(f"Failed to get HealthyWA exposure sheet ({req.reason})")
@@ -87,7 +87,7 @@ def wahealth_clean_string(location):
     return new_loc.rstrip(", ").lstrip(", ").replace(", , ", "; ").replace(" , ", " ").rstrip("\r\n")
 
 
-def civilian_exposures() -> List[exposures.Exposure]:
+def civilian_exposures() -> List[exposure_tools.Exposure]:
 
     # Consumer: https://docs.google.com/spreadsheets/d/1-U8Ea9o9bnST5pzckC8lzwNNK_jO6kIVUAi5Uu_-Ltc/edit?fbclid=IwAR3EaVvU0di14R6zqqfFP7sDLCwPOYax_SjMcDlmV2D2leqKGRAROCInpj4#gid=1427159313
     # Detailed/Admin: https://docs.google.com/spreadsheets/d/12fN17qFR8ruSk2yf29CR1S6xZMs_nve2ww_6FJk7__8/edit#gid=0
@@ -135,7 +135,7 @@ def civilian_exposures() -> List[exposures.Exposure]:
     return exposures
 
 
-def ecu_exposures() -> List[exposures.Exposure]:
+def ecu_exposures() -> List[exposure_tools.Exposure]:
     req = requests.get("https://www.ecu.edu.au/covid-19/advice-for-staff")
     if req.status_code != 200:
         raise Exception(f"Failed to get ECU exposure list ({req.reason})")
@@ -181,7 +181,7 @@ def ecu_exposures() -> List[exposures.Exposure]:
     return exposures
 
 
-def uwa_exposures() -> List[exposures.Exposure]:
+def uwa_exposures() -> List[exposure_tools.Exposure]:
     req = requests.get("https://www.uwa.edu.au/covid-19-faq/Home")
     if req.status_code != 200:
         raise Exception(f"Failed to get UWA exposure list ({req.reason})")
@@ -221,7 +221,7 @@ def uwa_exposures() -> List[exposures.Exposure]:
     return exposures
 
 # EXPOSURE TABLE REMOVED
-def curtin_exposures() -> List[exposures.Exposure]:
+def curtin_exposures() -> List[exposure_tools.Exposure]:
     req = requests.get("https://www.curtin.edu.au/novel-coronavirus/recent-exposure-sites-on-campus/")
     if req.status_code != 200:
         raise Exception(f"Failed to get Curtin University exposure list ({req.reason})")
@@ -263,7 +263,7 @@ def curtin_exposures() -> List[exposures.Exposure]:
     return exposures
 
 
-def murdoch_exposures() -> List[exposures.Exposure]:
+def murdoch_exposures() -> List[exposure_tools.Exposure]:
     req = requests.get("https://www.murdoch.edu.au/notices/covid-19-advice")
     if req.status_code != 200:
         raise Exception(f"Failed to get Murdoch exposure list ({req.reason})")

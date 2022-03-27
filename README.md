@@ -11,7 +11,7 @@ Collects WA Covid-19 Exposure Locations from:
 
 and sends them to Discord and adds them to a database.
 
-`exposure_parser.py` can be imported to collect exposures for other purposes. Similarly, `exposures.py` contains classes for locations and exposures
+`exposure_parser.py` can be imported to collect exposures for other purposes. Similarly, `exposure_tools.py` contains classes for locations and exposures
 
 ## Setup
 
