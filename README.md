@@ -1,4 +1,4 @@
-# WA Covid Mailer
+# WA Covid Exposure Tracker
 
 Collects WA Covid-19 Exposure Locations from:
 
