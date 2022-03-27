@@ -73,7 +73,7 @@ def wahealth_exposures() -> List[exposure_tools.Exposure]:
                 start_datetime = dt.datetime.combine(date, start_time.time())
                 end_datetime = dt.datetime.combine(date, end_time.time())
 
-            exposure = exposures.Exposure(start_datetime, address, None, end_datetime, advice)
+            exposure = exposure_tools.Exposure(start_datetime, address, None, end_datetime, advice)
             exposures.append(exposure)
 
     return exposures
@@ -122,7 +122,7 @@ def civilian_exposures() -> List[exposure_tools.Exposure]:
                     start_time = dt.datetime.strptime(str_time_start, "%I:%M %p").time()
                     end_time = dt.datetime.strptime(str_time_end, "%I:%M %p").time()
 
-                exposure = exposures.Exposure(dt.datetime.combine(date, start_time), address, record[0], dt.datetime.combine(date, end_time))
+                exposure = exposure_tools.Exposure(dt.datetime.combine(date, start_time), address, record[0], dt.datetime.combine(date, end_time))
                 exposures.append(exposure)
 
             except AttributeError as e:
@@ -154,9 +154,9 @@ def ecu_exposures() -> List[exposure_tools.Exposure]:
         assert header[3].text_content().strip() == 'Room', ecu_parsing_error
 
     campuses = {
-        "Joondalup Campus": exposures.reverse_geocode(-31.7524902, 115.7705912),
-        "Mount Lawley Campus": exposures.reverse_geocode(-31.9193013,115.8678213),
-        "South West Campus": exposures.reverse_geocode(-33.3667207,115.6508871)
+        "Joondalup Campus": exposure_tools.reverse_geocode(-31.7524902, 115.7705912),
+        "Mount Lawley Campus": exposure_tools.reverse_geocode(-31.9193013,115.8678213),
+        "South West Campus": exposure_tools.reverse_geocode(-33.3667207,115.6508871)
     }
     exposures = []
 
@@ -175,7 +175,7 @@ def ecu_exposures() -> List[exposure_tools.Exposure]:
             start_time = dt.datetime.strptime(str_time_start, "%I:%M %p")
             end_time = dt.datetime.strptime(str_time_end, "%I:%M %p")
 
-            exposure = exposures.Exposure(dt.datetime.combine(date, start_time.time()), campuses[campus], room + ", " + building, dt.datetime.combine(date, end_time.time()))
+            exposure = exposure_tools.Exposure(dt.datetime.combine(date, start_time.time()), campuses[campus], room + ", " + building, dt.datetime.combine(date, end_time.time()))
             exposures.append(exposure)
 
     return exposures
@@ -196,7 +196,7 @@ def uwa_exposures() -> List[exposure_tools.Exposure]:
     assert header[1].text_content().strip() == 'Location', uwa_parsing_error
     assert header[2].text_content().strip() == 'Time', uwa_parsing_error
 
-    address = exposures.reverse_geocode(-31.9789061, 115.8158834)
+    address = exposure_tools.reverse_geocode(-31.9789061, 115.8158834)
     exposures = []
 
     for row in rows:
@@ -215,7 +215,7 @@ def uwa_exposures() -> List[exposure_tools.Exposure]:
         start_time = dt.datetime.strptime(str_time_start, "%I.%M%p")
         end_time = dt.datetime.strptime(str_time_end, "%I.%M%p")
 
-        exposure = exposures.Exposure(dt.datetime.combine(date, start_time.time()), address, location, dt.datetime.combine(date, end_time.time()))
+        exposure = exposure_tools.Exposure(dt.datetime.combine(date, start_time.time()), address, location, dt.datetime.combine(date, end_time.time()))
         exposures.append(exposure)
 
     return exposures
@@ -240,8 +240,8 @@ def curtin_exposures() -> List[exposure_tools.Exposure]:
     assert header[4].text_content().strip() == 'Contact type', curtin_parsing_error
 
     campuses = {
-        "Bentley": exposures.reverse_geocode(-32.0061905, 115.8922242),
-        "": exposures.reverse_geocode(-31.9544054, 115.852636)
+        "Bentley": exposure_tools.reverse_geocode(-32.0061905, 115.8922242),
+        "": exposure_tools.reverse_geocode(-31.9544054, 115.852636)
     }
     exposures = []
 
@@ -257,7 +257,7 @@ def curtin_exposures() -> List[exposure_tools.Exposure]:
         start_time = dt.datetime.strptime(str_time_start, "%I:%M%p")
         end_time = dt.datetime.strptime(str_time_end, "%I:%M %p")
 
-        exposure = exposures.Exposure(dt.datetime.combine(date, start_time.time()), campuses[campus], location, dt.datetime.combine(date, end_time.time()), advice)
+        exposure = exposure_tools.Exposure(dt.datetime.combine(date, start_time.time()), campuses[campus], location, dt.datetime.combine(date, end_time.time()), advice)
         exposures.append(exposure)
 
     return exposures
@@ -280,9 +280,9 @@ def murdoch_exposures() -> List[exposure_tools.Exposure]:
     assert header[3].text_content().strip() == 'Location', murdoch_parsing_error
 
     campuses = {
-        "Perth (South Street)": exposures.reverse_geocode(-32.0679659, 115.8330479),
-        "Mandurah": exposures.reverse_geocode(-32.5157925, 115.7537496),
-        "Rockingham": exposures.reverse_geocode(-32.2779483, 115.749966)
+        "Perth (South Street)": exposure_tools.reverse_geocode(-32.0679659, 115.8330479),
+        "Mandurah": exposure_tools.reverse_geocode(-32.5157925, 115.7537496),
+        "Rockingham": exposure_tools.reverse_geocode(-32.2779483, 115.749966)
     }
     exposures = []
 
@@ -300,7 +300,7 @@ def murdoch_exposures() -> List[exposure_tools.Exposure]:
         end_time = dt.datetime.strptime(str_time_end, "%I.%M%p")
 
         address = campuses[campus]
-        exposure = exposures.Exposure(dt.datetime.combine(date, start_time.time()), address, location, dt.datetime.combine(date, end_time.time()))
+        exposure = exposure_tools.Exposure(dt.datetime.combine(date, start_time.time()), address, location, dt.datetime.combine(date, end_time.time()))
         exposures.append(exposure)
 
     return exposures
