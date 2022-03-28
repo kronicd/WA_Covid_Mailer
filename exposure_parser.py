@@ -230,6 +230,8 @@ def uwa_exposures() -> List[exposure_tools.Exposure]:
     exposures = []
 
     for row in rows:
+        if len(row) <= 0:
+            continue
         str_date = html_clean_string(row[0].text_content().strip())
         location = html_clean_string(row[1].text_content().strip())
         str_time = html_clean_string(row[2].text_content().strip())
