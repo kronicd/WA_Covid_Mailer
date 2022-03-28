@@ -235,7 +235,9 @@ def uwa_exposures() -> List[exposure_tools.Exposure]:
         str_time = html_clean_string(row[2].text_content().strip())
 
         date = dt.datetime.strptime(str_date, "%d %B").replace(year=NOW.year)
-        str_time_start, str_time_end = str_time.replace("midnight", "12.00am").replace(":", ".").split(" - ")
+        str_time_start, str_time_end = str_time.replace("midnight", "12.00am").replace(":", ".").split("-")
+        str_time_start = str_time_start.strip()
+        str_time_end = str_time_end.strip()
         if str_time_start[-1] != "m":
             str_time_start += str_time_end[-2:]
         if "." not in str_time_start:
