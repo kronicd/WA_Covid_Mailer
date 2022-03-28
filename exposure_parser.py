@@ -229,9 +229,7 @@ def uwa_exposures() -> List[exposure_tools.Exposure]:
     address = exposure_tools.reverse_geocode(-31.9789061, 115.8158834)
     exposures = []
 
-    for row in rows:
-        if len(row) <= 0:
-            continue
+    for row in rows[:-1]:
         str_date = html_clean_string(row[0].text_content().strip())
         location = html_clean_string(row[1].text_content().strip())
         str_time = html_clean_string(row[2].text_content().strip())
