@@ -63,8 +63,8 @@ exposures = \
 ### Optimisation
 
 Because geocoding can be a very time consuming process, there are some workarounds implemented to prevent the data which has already been processed from being processed again:
-* The (`since`)[## "`datetime.datetime`, `datetime.date`, or ISO-formatted date string"] parameter in `exposure_parser.wahealth_exposures` gets all exposures since the date specified, so if this date is set to the last time the program was run it is possible to only get exposures from that day or later
-* The `get_new` and `keep_hash_list` parameters in `exposure_parser.civilian_exposures`: the former checks every new exposure it reads against a list of hashes of all the previous exposures that still exist in the source and the latter allows this list to be kept
+* The `since` (`datetime.datetime`, `datetime.date`, or ISO-formatted date string) parameter in `exposure_parser.wahealth_exposures` gets all exposures since the date specified, so if this date is set to the last time the program was run it is possible to only get exposures from that day or later
+* The `get_new` and `keep_hash_list` (boolean) parameters in `exposure_parser.civilian_exposures`: the former checks every new exposure it reads against a list of hashes of all the previous exposures that still exist in the source and the latter allows this list to be kept
 While the module works without these, it is highly recommended that you use them and store all new exposures in a database so that you don't have to process all the locations every time you run your program.
 
 ## Credits
