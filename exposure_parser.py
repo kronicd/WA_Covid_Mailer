@@ -323,7 +323,7 @@ def murdoch_exposures() -> List[exposure_tools.Exposure]:
         location = html_clean_string(row[3].text_content().strip())
 
         date = dt.datetime.strptime(str_date, "%d %B").replace(year=NOW.year)
-        str_time_start, str_time_end = str_time.replace("noon", ".00pm").replace(":", ".").split(" – ")
+        str_time_start, str_time_end = str_time.replace(" noon", ".00pm").replace("noon", ".00pm").replace(":", ".").split(" – ")
         if str_time_start[-1] != "m":
             str_time_start += str_time_end[-2:]
         start_time = dt.datetime.strptime(str_time_start, "%I.%M%p")
