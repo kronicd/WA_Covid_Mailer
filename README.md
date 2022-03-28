@@ -40,6 +40,33 @@ To run this script at intervals you can use a cronjob if you are running Linux; 
 */15 * * * * /usr/bin/python3 /path/to/discord_notify.py > /dev/null 2>&1
 ~~~
 
+## Using `exposure_parser.py`
+
+### Basic Usage
+If you plan to use this project as a library, you can import `exposure_parser.py` like so:
+```python
+import exposure_parser
+
+LAST_RUN = # (Read this from a file if you're using it)
+
+# Get exposures from the sources you need
+exposures = \
+    exposure_parser.murdoch_exposures()             + \
+    exposure_parser.uwa_exposures()                 + \
+    exposure_parser.ecu_exposures()                 + \
+    exposure_parser.civilian_exposures(True)        + \
+    exposure_parser.wahealth_exposures(LAST_RUN)
+
+# (Process exposure data)
+```
+
+### Optimisation
+
+Because geocoding can be a very time consuming process, there are some workarounds implemented to prevent the data which has already been processed from being processed again:
+* The (`since`)[## "`datetime.datetime`, `datetime.date`, or ISO-formatted date string"] parameter in `exposure_parser.wahealth_exposures` gets all exposures since the date specified, so if this date is set to the last time the program was run it is possible to only get exposures from that day or later
+* The `get_new` and `keep_hash_list` parameters in `exposure_parser.civilian_exposures`: the former checks every new exposure it reads against a list of hashes of all the previous exposures that still exist in the source and the latter allows this list to be kept
+While the module works without these, it is highly recommended that you use them and store all new exposures in a database so that you don't have to process all the locations every time you run your program.
+
 ## Credits
 
 This project is based on [another project by user kronicd](https://github.com/kronicd/WA_Covid_Mailer). I cloned their code but cut down and rewrote most of it in order to properly parse the data from the exposure sources.
