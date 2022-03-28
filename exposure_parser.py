@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+from dataclasses import dataclass
 from functools import partial
 import datetime as dt
 import hashlib
 import os
-from typing import List
+from typing import List, Union
 import lxml.html
 import requests
 import codecs
@@ -22,7 +23,17 @@ def html_clean_string(s):
     s = s.strip().replace('\r','').replace('\n','').rstrip(',')
     return s
 
-def wahealth_exposures(since: dt.datetime = None) -> List[exposure_tools.Exposure]:
+def wahealth_exposures(since: Union[dt.datetime, dt.date, str] = None) -> List[exposure_tools.Exposure]:
+    since_type = type(since)
+    if since == None:
+        since_date = None
+    elif since_type == dt.datetime:
+        since_date = since.date()
+    elif since_type == str:
+        since_date = dt.datetime.fromisoformat(since)
+    else:
+        raise TypeError("Parameter 'since' can only be of type datetime.datetime, datetime.date, or and ISO-formatted string.")
+    
     req = requests.get("https://www.healthywa.wa.gov.au/COVID19locations")
     if req.status_code != 200:
         raise Exception(f"Failed to get HealthyWA exposure sheet ({req.reason})")
@@ -50,8 +61,8 @@ def wahealth_exposures(since: dt.datetime = None) -> List[exposure_tools.Exposur
 
     for row in rows:
         updated = dt.datetime.strptime(row[4].text_content(), "%d/%m/%Y")
-        if since:
-            if updated.date() < since.date():
+        if since_date:
+            if updated.date() < since_date:
                 continue  # If this entry hasn't been updated since the last run then it contains no new information and we can skip it
         date_time_str = _wahealth_clean_string(row[1].text_content())
         address = _wahealth_clean_string(row[3].text_content()) + ", " + _wahealth_clean_string(row[2].text_content())
