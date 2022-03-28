@@ -11,11 +11,11 @@ Collects WA Covid-19 Exposure Locations from:
 
 and sends them to Discord and adds them to a database.
 
-`exposure_parser.py` can be imported to collect exposures for other purposes. Similarly, `exposure_tools.py` contains classes for locations and exposures
+[`exposure_parser.py`](exposure_parser.py) can be imported to collect exposures for other purposes. Similarly, [`exposure_tools.py`](exposure_tools.py) contains classes for locations and exposures
 
 ## Setup
 
-### Edit the configuration file `config.json`
+### Edit the configuration file [`config.json`](config.json)
 
 ~~~json
 {
@@ -40,10 +40,10 @@ To run this script at intervals you can use a cronjob if you are running Linux; 
 */15 * * * * /usr/bin/python3 /path/to/discord_notify.py > /dev/null 2>&1
 ~~~
 
-## Using `exposure_parser.py`
+## Using [`exposure_parser.py`](exposure_parser.py)
 
 ### Basic Usage
-If you plan to use this project as a library, you can import `exposure_parser.py` like so:
+If you plan to use this project as a library, you can import [`exposure_parser.py`](exposure_parser.py) like so:
 ```python
 import exposure_parser
 
