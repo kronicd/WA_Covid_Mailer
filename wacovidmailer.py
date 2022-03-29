@@ -589,6 +589,10 @@ def uwa_GetLocations():
     for row in rows:
         record = {}
 
+        # kludge as there are empty rows with a single cell sometimes :(
+        if(len(row) < 3):
+            return ""
+
         record['date'] = html_cleanString(row[0].text_content().strip())
         record['location'] = html_cleanString(row[1].text_content().strip())
         record['time'] = html_cleanString(row[2].text_content().strip())
