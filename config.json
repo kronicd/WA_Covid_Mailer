@@ -1,0 +1,6 @@
+{
+    "database_file": "/path/to/database.db",
+    "discord_webhooks": [
+        "https://discordapp.com/api/webhooks/XXXXXXX/XXXXXXX"
+    ]
+}
